@@ -1,0 +1,31 @@
+# Dependency directories
+node_modules/
+frontend/node_modules/
+backend/.venv/
+venv/
+env/
+
+# Next.js build output
+frontend/.next/
+frontend/dist/
+
+# Environment variables (Included by user request for private repo)
+# .env
+# .env.local
+
+# Local data / Python
+backend/data/
+backend/*.db
+backend/__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

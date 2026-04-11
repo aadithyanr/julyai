@@ -1,0 +1,514 @@
+/**
+ * Serialize React Flow graph to backend GraphSchema and call training API.
+ * Backend expects: one "input", one "output", and types like linear, conv2d, relu, etc.
+ */
+
+import type { Node, Edge } from "@xyflow/react";
+
+// Backend schema (mirrors Python Pydantic models)
+export interface GraphNodeSchema {
+  id: string;
+  type: string;
+  params: Record<string, unknown>;
+  position: { x: number; y: number };
+}
+
+export interface GraphEdgeSchema {
+  id: string;
+  source: string;
+  sourceHandle: string;
+  target: string;
+  targetHandle: string;
+}
+
+export interface GraphMetadataSchema {
+  name: string;
+  created_at: string;
+  description?: string;
+}
+
+export interface GraphSchema {
+  version: string;
+  nodes: GraphNodeSchema[];
+  edges: GraphEdgeSchema[];
+  metadata: GraphMetadataSchema;
+}
+
+export interface TrainingConfigSchema {
+  epochs: number;
+  batch_size: number;
+  learning_rate: number;
+  optimizer: string;
+  train_split: number;
+}
+
+const BACKEND_SUPPORTED_TYPES = new Set([
+  "input",
+  "output",
+  "augment",
+  "linear",
+  "conv2d",
+  "maxpool2d",
+  "adaptiveavgpool2d",
+  "flatten",
+  "relu",
+  "gelu",
+  "sigmoid",
+  "tanh",
+  "dropout",
+  "batchnorm",
+  "layernorm",
+  "add",
+  "concat",
+  "softmax",
+  "positional_encoding",
+  "positional_embedding",
+  "attention",
+  "text_input",
+  "embedding",
+]);
+
+/** Map frontend BlockType + params to backend node type and params. */
+function toBackendNodeType(
+  frontendType: string,
+  params: Record<string, unknown>
+): { type: string; params: Record<string, unknown> } {
+  const typeLower = frontendType.toLowerCase();
+  switch (frontendType) {
+    case "Input": {
+      let shape: number[] = [1, 28, 28];
+      const raw = params.input_shape ?? params.shape;
+      if (typeof raw === "string" && raw.trim().length > 0) {
+        const dims = raw.split(",").map((x) => parseInt(String(x).trim(), 10)).filter((n) => Number.isFinite(n));
+        if (dims.length > 0) shape = dims;
+      } else if (Array.isArray(raw)) {
+        const dims = raw.map((x) => (x == null ? 1 : Number(x))).filter((n) => Number.isFinite(n));
+        if (dims.length > 0) shape = dims;
+      }
+      return { type: "input", params: { ...params, shape } };
+    }
+    case "TextInput":
+      return {
+        type: "text_input",
+        params: {
+          batch_size: params.batch_size ?? 1,
+          seq_len: params.seq_len ?? 128,
+        },
+      };
+    case "Linear":
+      return {
+        type: "linear",
+        params: {
+          out_features: params.out_features ?? 128,
+          bias: params.bias ?? true,
+        },
+      };
+    case "Conv2D": {
+      const kRaw = params.kernel_size ?? 3;
+      const kernelSize = Array.isArray(kRaw) ? (kRaw[0] as number) ?? 3 : (typeof kRaw === "number" ? kRaw : parseInt(String(kRaw), 10) || 3);
+      const sRaw = params.stride ?? 1;
+      const stride = Array.isArray(sRaw) ? (sRaw[0] as number) ?? 1 : (typeof sRaw === "number" ? sRaw : parseInt(String(sRaw), 10) || 1);
+      const padRaw = params.padding ?? 0;
+      const padding =
+        padRaw === "same" || String(padRaw).toLowerCase() === "same"
+          ? Math.floor(kernelSize / 2)
+          : Array.isArray(padRaw)
+            ? (padRaw[0] as number) ?? 0
+            : (typeof padRaw === "number" ? padRaw : parseInt(String(padRaw), 10) || 0);
+      return {
+        type: "conv2d",
+        params: {
+          out_channels: params.out_channels ?? 32,
+          kernel_size: kernelSize,
+          stride,
+          padding,
+        },
+      };
+    }
+    case "MaxPool2D": {
+      const kRaw = params.kernel_size ?? 2;
+      const kernelSize = Array.isArray(kRaw) ? (kRaw[0] as number) ?? 2 : (typeof kRaw === "number" ? kRaw : parseInt(String(kRaw), 10) || 2);
+      const sRaw = params.stride ?? kernelSize;
+      const stride = Array.isArray(sRaw) ? (sRaw[0] as number) ?? kernelSize : (typeof sRaw === "number" ? sRaw : parseInt(String(sRaw), 10) || kernelSize);
+      return {
+        type: "maxpool2d",
+        params: { kernel_size: kernelSize, stride },
+      };
+    }
+    case "MaxPool1D": {
+      const kRaw = params.kernel_size ?? 2;
+      const kernelSize = Array.isArray(kRaw) ? (kRaw[0] as number) ?? 2 : (typeof kRaw === "number" ? kRaw : parseInt(String(kRaw), 10) || 2);
+      const sRaw = params.stride ?? kernelSize;
+      const stride = Array.isArray(sRaw) ? (sRaw[0] as number) ?? kernelSize : (typeof sRaw === "number" ? sRaw : parseInt(String(sRaw), 10) || kernelSize);
+      return {
+        type: "maxpool1d",
+        params: { kernel_size: kernelSize, stride },
+      };
+    }
+    case "Flatten":
+      return { type: "flatten", params: {} };
+    case "Activation": {
+      const act = (params.activation as string) ?? "relu";
+      const backendAct = ["relu", "gelu", "sigmoid", "tanh"].includes(act)
+        ? act
+        : "relu";
+      return { type: backendAct, params: {} };
+    }
+    case "Dropout":
+      return { type: "dropout", params: { p: params.p ?? 0.5 } };
+    case "LayerNorm":
+      return {
+        type: "layernorm",
+        params: { normalized_shape: params.normalized_shape ?? 512 },
+      };
+    case "BatchNorm":
+      return {
+        type: "batchnorm",
+        params: { num_features: params.num_features ?? 32 },
+      };
+    case "Softmax":
+      return { type: "softmax", params: {} };
+    case "PositionalEncoding":
+      return {
+        type: "positional_encoding",
+        params: {
+          d_model: params.d_model ?? 128,
+          max_len: params.max_len ?? 512,
+        },
+      };
+    case "Attention":
+      return {
+        type: "attention",
+        params: {
+          embed_dim: params.embed_dim ?? 128,
+          num_heads: params.num_heads ?? 4,
+        },
+      };
+    case "TextEmbedding":
+      return {
+        type: "embedding",
+        params: {
+          num_embeddings: params.vocab_size ?? params.num_embeddings ?? 10000,
+          embedding_dim: params.embedding_dim ?? 128,
+        },
+      };
+    case "PositionalEmbedding":
+      return {
+        type: "positional_embedding",
+        params: {
+          d_model: params.d_model ?? 128,
+          max_len: params.max_len ?? 512,
+        },
+      };
+    case "Output":
+      return { type: "output", params: {} };
+    case "Augment": {
+      let augmentations: unknown[] = [];
+      try {
+        const raw = params.augmentations;
+        if (typeof raw === "string" && raw.trim()) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) augmentations = parsed.filter((a: unknown) => a && typeof (a as { id?: string }).id === "string");
+        }
+      } catch {
+        // leave empty
+      }
+      return { type: "augment", params: { augmentations } };
+    }
+    default:
+      return { type: typeLower, params };
+  }
+}
+
+/**
+ * Convert React Flow nodes/edges to backend GraphSchema.
+ * If the graph has an explicit Output block, use it as the single output node.
+ * Otherwise injects a virtual "output" node connected to the single sink (node with no outgoing edges).
+ * Returns null if graph has unsupported blocks, no output, or multiple output nodes.
+ */
+export function serializeGraphForTraining(
+  nodes: Node[],
+  edges: Edge[]
+): { graph: GraphSchema; error?: string } {
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const outputBlocks = nodes.filter((n) => (n.type as string) === "Output");
+
+  if (outputBlocks.length > 1) {
+    return {
+      graph: null as unknown as GraphSchema,
+      error: "Graph must have exactly one Output node.",
+    };
+  }
+
+  const hasExplicitOutput = outputBlocks.length === 1;
+
+  if (!hasExplicitOutput) {
+    const outDegree: Record<string, number> = {};
+    nodes.forEach((n) => (outDegree[n.id] = 0));
+    edges.forEach((e) => {
+      if (nodeIds.has(e.source)) outDegree[e.source] = (outDegree[e.source] ?? 0) + 1;
+    });
+    const sinks = nodes.filter((n) => outDegree[n.id] === 0);
+    if (sinks.length === 0) {
+      return { graph: null as unknown as GraphSchema, error: "Graph has no Output node. Add an Output block and connect it to your last layer." };
+    }
+    if (sinks.length > 1) {
+      return { graph: null as unknown as GraphSchema, error: "Graph must have exactly one Output node (one sink when no Output block is used)." };
+    }
+  }
+
+  const unsupported = nodes.filter((n) => {
+    const t = n.type as string;
+    if (t === "Input" || t === "Output") return false;
+    const { type } = toBackendNodeType(t, (n.data?.params as Record<string, unknown>) ?? {});
+    return !BACKEND_SUPPORTED_TYPES.has(type);
+  });
+  if (unsupported.length > 0) {
+    const types = [...new Set(unsupported.map((n) => n.type as string))];
+    return {
+      graph: null as unknown as GraphSchema,
+      error: `Unsupported block types for training: ${types.join(", ")}. Supported: Input, Output, Linear, Conv2D, Flatten, Activation (relu/gelu/sigmoid/tanh), Dropout, LayerNorm, BatchNorm.`,
+    };
+  }
+
+  let backendNodes: GraphNodeSchema[] = nodes.map((n) => {
+    const params = (n.data?.params as Record<string, unknown>) ?? {};
+    const { type, params: backendParams } = toBackendNodeType(n.type as string, params);
+    const pos = n.position ?? { x: 0, y: 0 };
+    return {
+      id: n.id,
+      type,
+      params: backendParams,
+      position: { x: pos.x, y: pos.y },
+    };
+  });
+
+  let backendEdges: GraphEdgeSchema[] = edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    sourceHandle: (e.sourceHandle as string) ?? "out",
+    target: e.target,
+    targetHandle: (e.targetHandle as string) ?? "in",
+  }));
+
+  if (!hasExplicitOutput) {
+    const outDegree: Record<string, number> = {};
+    nodes.forEach((n) => (outDegree[n.id] = 0));
+    edges.forEach((e) => {
+      if (nodeIds.has(e.source)) outDegree[e.source] = (outDegree[e.source] ?? 0) + 1;
+    });
+    const sinkId = nodes.find((n) => outDegree[n.id] === 0)!.id;
+    const outputNodeId = "output-virtual";
+    backendNodes = [
+      ...backendNodes,
+      {
+        id: outputNodeId,
+        type: "output",
+        params: { loss_fn: "CrossEntropyLoss" },
+        position: { x: 0, y: 0 },
+      },
+    ];
+    backendEdges = [
+      ...backendEdges,
+      {
+        id: "edge-to-output",
+        source: sinkId,
+        sourceHandle: "out",
+        target: outputNodeId,
+        targetHandle: "in",
+      },
+    ];
+  }
+
+  const graph: GraphSchema = {
+    version: "1",
+    nodes: backendNodes,
+    edges: backendEdges,
+    metadata: {
+      name: "NeuralCanvas",
+      created_at: new Date().toISOString(),
+      description: "Exported for training",
+    },
+  };
+
+  return { graph };
+}
+
+import { getApiBase } from "@/lib/apiConfig";
+export { getApiBase };
+
+export interface DatasetInfo {
+  id: string;
+  name: string;
+  description: string;
+  input_shape: number[];
+  num_classes: number;
+  num_samples?: number;
+  format?: string;
+  class_names?: string[];
+  is_builtin: boolean;
+}
+
+export async function fetchDatasets(accessToken?: string): Promise<DatasetInfo[]> {
+  const base = getApiBase();
+  const headers: HeadersInit = {};
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  const res = await fetch(`${base}/api/datasets/`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch datasets");
+  return res.json();
+}
+
+/** Fallback class labels only when API does not return class_names for a dataset. */
+const KNOWN_DATASET_LABELS_FALLBACK: Record<string, string[]> = {
+  mnist: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+  fashion_mnist: [
+    "T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
+    "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot",
+  ],
+  cifar10: [
+    "airplane", "automobile", "bird", "cat", "deer",
+    "dog", "frog", "horse", "ship", "truck",
+  ],
+};
+
+/**
+ * Fetch human-readable class labels for the dataset selected in the Input block.
+ * Always tries the API first (GET /api/datasets/:id) so labels come from the
+ * actual dataset; only falls back to known labels if the API fails or returns none.
+ */
+export async function getClassLabelsForDataset(datasetId: string): Promise<string[]> {
+  if (!datasetId || datasetId === "__custom__") return [];
+  const base = getApiBase();
+  try {
+    const res = await fetch(`${base}/api/datasets/${encodeURIComponent(datasetId)}`);
+    if (res.ok) {
+      const data = (await res.json()) as { class_names?: string[]; labels?: string[] };
+      const names = data.class_names ?? data.labels;
+      if (Array.isArray(names) && names.length > 0) return names;
+    }
+  } catch {
+    // ignore
+  }
+  const fallback = KNOWN_DATASET_LABELS_FALLBACK[datasetId.toLowerCase()];
+  return fallback ?? [];
+}
+
+export async function uploadDataset(
+  file: File,
+  name: string,
+  accessToken: string,
+  labelColumn?: string,
+): Promise<DatasetInfo> {
+  const base = getApiBase();
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("name", name);
+  if (labelColumn) formData.append("label_column", labelColumn);
+
+  const res = await fetch(`${base}/api/datasets/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Upload failed");
+  }
+  return res.json();
+}
+
+export async function deleteDataset(datasetId: string, accessToken: string): Promise<void> {
+  const base = getApiBase();
+  const id = datasetId.replace("custom:", "");
+  const res = await fetch(`${base}/api/datasets/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Failed to delete dataset");
+  }
+}
+
+export async function startTraining(
+  graph: GraphSchema,
+  datasetId: string,
+  config: TrainingConfigSchema
+): Promise<{ job_id: string }> {
+  const base = getApiBase();
+  const res = await fetch(`${base}/api/training/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      graph,
+      dataset_id: datasetId,
+      training_config: config,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? res.statusText ?? "Failed to start training");
+  }
+  return res.json();
+}
+
+const TRAINING_WS_DEBUG = typeof process !== "undefined" && process.env.NODE_ENV === "development";
+
+export function openTrainingWebSocket(
+  jobId: string,
+  onMessage: (msg: Record<string, unknown>) => void,
+  onClose: () => void
+): () => void {
+  const base = getApiBase();
+  const protocol = base.startsWith("https") ? "wss" : "ws";
+  const host = base.replace(/^https?:\/\//, "");
+  const wsUrl = `${protocol}://${host}/ws/training/${jobId}`;
+  if (TRAINING_WS_DEBUG) {
+    console.log("[Training WS] Connecting to", wsUrl);
+  }
+  const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    if (TRAINING_WS_DEBUG) console.log("[Training WS] Open");
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+      const type = msg.type as string;
+      if (TRAINING_WS_DEBUG) {
+        if (type === "batch") {
+          console.log("[Training WS] batch", msg.epoch, msg.batch, "loss", msg.loss);
+        } else if (type === "epoch") {
+          console.log("[Training WS] epoch", msg.epoch, "train_loss", msg.train_loss, "val_loss", msg.val_loss, "train_acc", msg.train_acc, "val_acc", msg.val_acc);
+        } else {
+          console.log("[Training WS] message", type, msg);
+        }
+      }
+      onMessage(msg);
+    } catch {
+      // ignore
+    }
+  };
+
+  ws.onerror = (e) => {
+    if (TRAINING_WS_DEBUG) console.error("[Training WS] Error", e);
+    onClose();
+  };
+
+  ws.onclose = (e) => {
+    if (TRAINING_WS_DEBUG) console.log("[Training WS] Close", e.code, e.reason || "(no reason)");
+    onClose();
+  };
+
+  return () => {
+    ws.readyState === WebSocket.OPEN && ws.close();
+  };
+}
+
+export async function stopTraining(jobId: string): Promise<void> {
+  const base = getApiBase();
+  await fetch(`${base}/api/training/${jobId}/stop`, { method: "POST" });
+}

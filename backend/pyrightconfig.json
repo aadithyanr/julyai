@@ -1,0 +1,7 @@
+{
+  "include": ["."],
+  "venvPath": ".",
+  "venv": ".venv",
+  "extraPaths": ["."],
+  "pythonVersion": "3.13"
+}

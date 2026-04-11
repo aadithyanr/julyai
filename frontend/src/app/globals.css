@@ -1,0 +1,407 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   JulyAI — Premium Design System (Obsidian Core)
+   ========================================================================= 
+   A clean, warm light theme designed for learning and exploration.
+   Inspired by Lobe.ai, Apple HIG, and Figment — the UI recedes so
+   the content (your neural network) comes forward.
+   Target audience: age 12+, non-AI users, curious learners.
+   ========================================================================= */
+
+:root {
+  color-scheme: light;
+
+  /* ── Core Palette (Paper & Slate) ─────────────────────────────────── */
+  --background:         #F8FAFC;
+  --background-subtle:  #F1F5F9;
+  --surface:            #FFFFFF;
+  --surface-elevated:   #F8FAFC;
+  --surface-hover:      #F1F5F9;
+
+  /* ── Borders ─────────────────────────────────────────────────────────── */
+  --border:             #E2E8F0;
+  --border-muted:       #F1F5F9;
+  --border-strong:      #CBD5E1;
+
+  /* ── Text ────────────────────────────────────────────────────────────── */
+  --foreground:         #0F172A;
+  --foreground-secondary: #334155;
+  --foreground-muted:   #64748B;
+  --foreground-faint:   #94A3B8;
+
+  /* ── Accent (July Ocean: Cyan/Blue) ────────────────────────────── */
+  --accent:             #0EA5E9;
+  --accent-hover:       #0284C7;
+  --accent-muted:       rgba(14, 165, 233, 0.1);
+  --accent-strong:      rgba(14, 165, 233, 0.2);
+  --accent-glow:        0 0 24px rgba(14, 165, 233, 0.15);
+
+  /* ── Semantic Colors ─────────────────────────────────────────────────── */
+  --success:            #22C55E;
+  --success-muted:      rgba(34, 197, 94, 0.1);
+  --danger:             #EF4444;
+  --danger-muted:       rgba(239, 68, 68, 0.1);
+  --warning:            #F59E0B;
+  --warning-muted:      rgba(245, 158, 11, 0.1);
+  --info:               #0EA5E9;
+
+  /* ── Block Colors ────────────────────── */
+  --block-input:        #F59E0B;
+  --block-output:       #22C55E;
+  --block-linear:       #0EA5E9;
+  --block-conv:         #A855F7;
+  --block-lstm:         #EC4899;
+  --block-attention:    #F97316;
+  --block-activation:   #F43F5E;
+  --block-norm:         #14B8A6;
+  --block-utility:      #8B5CF6;
+  --block-embedding:    #06B6D4;
+
+  /* ── Radii ───────────────────────────────────────────────────────────── */
+  --radius-sm:          6px;
+  --radius:             10px;
+  --radius-lg:          14px;
+  --radius-xl:          20px;
+
+  /* ── Shadows (Deep & Premium) ────────────────────────────────────────── */
+  --shadow-sm:          0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md:          0 4px 12px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg:          0 12px 30px -10px rgba(0, 0, 0, 0.15), 0 4px 12px -5px rgba(0, 0, 0, 0.1);
+  --shadow-xl:          0 20px 40px -15px rgba(0, 0, 0, 0.2), 0 8px 16px -8px rgba(0, 0, 0, 0.15);
+  --shadow-glow:        0 0 30px rgba(14, 165, 233, 0.2);
+  --shadow-card:        0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-card-hover:  0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-glass:       0 8px 32px 0 rgba(31, 38, 135, 0.07);
+
+  /* ── Glassmorphism ────────────────────────────────────────────────────── */
+  --glass-bg:           rgba(255, 255, 255, 0.75);
+  --glass-border:       rgba(255, 255, 255, 0.4);
+  --glass-blur:         12px;
+
+  /* ── NeuralCanvas aliases ──────────────────────────────────────────── */
+  --neural-bg:          #F8FAFC;
+  --neural-surface:     #FFFFFF;
+  --neural-border:      #E2E8F0;
+  --neural-muted:       #94A3B8;
+  --neural-accent:      var(--accent);
+
+  /* ── Block card surface ────────────────────────────────────────────── */
+  --block-surface:      #FFFFFF;
+  --block-surface-elevated: #F8FAFC;
+
+  /* ── Connectors ────────────────────────────────────────────────────── */
+  --connector-stroke:   #CBD5E1;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --background:         #020617;
+  --background-subtle:  #0F172A;
+  --surface:            #1E293B;
+  --surface-elevated:   #334155;
+  --surface-hover:      #475569;
+  --border:             #334155;
+  --border-muted:       #1E293B;
+  --border-strong:      #64748B;
+  --foreground:         #F8FAFC;
+  --foreground-secondary: #CBD5E1;
+  --foreground-muted:   #94A3B8;
+  --foreground-faint:   #475569;
+  --accent:             #22D3EE;
+  --accent-hover:       #0EA5E9;
+  --neural-bg:          #020617;
+  --neural-surface:     #0F172A;
+  --neural-border:      #1E293B;
+  --connector-stroke:   #64748B;
+}
+
+/* ── Tailwind Theme Integration ──────────────────────────────────────── */
+@theme inline {
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --font-sans:                  var(--font-inter);
+  --font-mono:                  var(--font-jetbrains-mono);
+  --font-brand:                 var(--font-outfit);
+  --color-neural-bg:            var(--neural-bg);
+  --color-neural-surface:       var(--neural-surface);
+  --color-neural-border:        var(--neural-border);
+  --color-neural-muted:         var(--neural-muted);
+  --color-neural-accent:        var(--neural-accent);
+  --color-neural-accent-light:  var(--neural-accent-light);
+  --color-neural-success:       var(--neural-success);
+  --color-neural-warning:       var(--neural-warning);
+  --color-neural-error:         var(--neural-error);
+}
+
+/* ── Base Styles ─────────────────────────────────────────────────────── */
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Focus Accessibility ─────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground-muted);
+}
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Selection ───────────────────────────────────────────────────────── */
+::selection {
+  background: var(--accent-strong);
+  color: white;
+}
+
+/* =========================================================================
+   React Flow Overrides — clean light canvas
+   ========================================================================= */
+.react-flow__node {
+  background: transparent !important;
+  padding: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node-input,
+.react-flow__node-output,
+.react-flow__node-default {
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.react-flow__background {
+  background: var(--neural-bg) !important;
+}
+
+.react-flow__edge-path {
+  stroke: var(--connector-stroke);
+  stroke-width: 1.5;
+}
+
+.react-flow__edge.animated path {
+  stroke: var(--accent);
+  stroke-dasharray: 5 5;
+  animation: dash 0.5s linear infinite;
+}
+
+.react-flow__controls {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-md) !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--foreground-muted) !important;
+  fill: var(--foreground-muted) !important;
+  transition: all var(--transition-fast);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--surface-hover) !important;
+  color: var(--accent) !important;
+  fill: var(--accent) !important;
+}
+
+.react-flow__minimap {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.react-flow__attribution {
+  background: transparent !important;
+}
+
+.react-flow__attribution a {
+  color: var(--foreground-muted) !important;
+  opacity: 0.3;
+}
+
+/* React Flow dark mode overrides */
+html[data-theme="dark"] .react-flow__background {
+  background: var(--neural-bg) !important;
+}
+html[data-theme="dark"] .react-flow__minimap-mask {
+  fill: rgba(15, 17, 23, 0.85) !important;
+}
+
+/* =========================================================================
+   Animations
+   ========================================================================= */
+@keyframes dash {
+  to { stroke-dashoffset: -10; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  40%      { transform: translateX(4px); }
+  60%      { transform: translateX(-2px); }
+  80%      { transform: translateX(2px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes thinking-dot {
+  0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+  40%           { transform: scale(1.2); opacity: 1; }
+}
+
+.animate-thinking-dot { animation: thinking-dot 1s ease-in-out infinite; }
+.animate-shake      { animation: shake 0.4s ease-in-out; }
+.animate-fade-in    { animation: fadeIn 0.3s ease-out; }
+.animate-slide-up   { animation: slideUp 0.4s ease-out; }
+.animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-float      { animation: float 3s ease-in-out infinite; }
+.animate-shimmer    {
+  background: linear-gradient(90deg, var(--surface-elevated) 25%, var(--surface) 50%, var(--surface-elevated) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* =========================================================================
+   Utility Classes
+   ========================================================================= */
+
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+}
+html[data-theme="dark"] .glass {
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.card-hover {
+  transition: all var(--transition-base);
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--accent), #8B5CF6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Block node card on canvas */
+.block-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-base);
+}
+.block-card:hover,
+.block-card.selected {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Agent-suggested blocks: soft accent ring and subtle pulse */
+.react-flow__node.agent-suggested-node {
+  animation: agent-suggested-glow 2.5s ease-in-out 2;
+}
+.react-flow__node.agent-suggested-node > div {
+  box-shadow: 0 0 0 2px var(--accent-strong), var(--shadow-card);
+}
+@keyframes agent-suggested-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px var(--accent-muted));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px var(--accent-strong));
+  }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes thinking-dot {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+.animate-thinking-dot {
+  animation: thinking-dot 1.2s ease-in-out infinite;
+}
