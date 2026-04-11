@@ -1520,7 +1520,7 @@ python train.py --csv data.csv --label-col target --epochs 30
 
     return f"""# {model_name}
 
-> Neural network model exported from [JulyAI](https://julyai.najrudin.com.np) — Visual AI Builder
+> Neural network model exported from [JulyAI](https://currycoder.link) — Visual AI Builder
 
 **Input shape:** `{input_shape}` | **Output classes:** `{num_classes}` | Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
 
