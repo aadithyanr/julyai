@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, Zap, Eye } from "lucide-react";
+import { GripVertical, Zap, Eye, KeyRound } from "lucide-react";
 
 function LightBg() {
   return (
@@ -136,6 +136,11 @@ export default function LoginPage() {
       setIsForgotPassword(true);
     }
 
+    if (params.get("passwordUpdated") === "1") {
+      setMessage("Your password was updated. Sign in with your new password.");
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+
     const recoveryParam = params.get("recovery");
     if (recoveryParam === "1" || recoveryParam === "true") {
       recoveryPendingRef.current = true;
@@ -232,7 +237,7 @@ export default function LoginPage() {
       setNewPassword("");
       setConfirmPassword("");
       await supabase.auth.signOut();
-      router.replace("/login");
+      router.replace("/login?passwordUpdated=1");
     }
   };
 
@@ -250,19 +255,33 @@ export default function LoginPage() {
         <div className="flex justify-center mb-6">
           <Logo />
         </div>
-        <NeuralIllustration />
-        <p className="text-center text-[var(--foreground-muted)] text-[13px] mb-8">
-          The next generation of visual intelligence.
-        </p>
+        {!isResetMode && (
+          <>
+            <NeuralIllustration />
+            <p className="text-center text-[var(--foreground-muted)] text-[13px] mb-8">
+              The next generation of visual intelligence.
+            </p>
+          </>
+        )}
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur-sm p-8 shadow-lg">
+        <div
+          className={`rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur-sm shadow-lg ${isResetMode ? "p-8 ring-1 ring-[var(--accent)]/15" : "p-8"}`}
+        >
 
           {/* ── Card heading changes based on mode ── */}
           {isResetMode ? (
-            <>
-              <h2 className="text-center text-lg font-semibold text-[var(--foreground)] mb-1">Set new password</h2>
-              <p className="text-center text-xs text-[var(--foreground-muted)] mb-6">Choose a strong password for your account</p>
-            </>
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div
+                className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--background-subtle)] shadow-sm"
+                aria-hidden
+              >
+                <KeyRound className="h-7 w-7 text-[var(--accent)]" strokeWidth={1.75} />
+              </div>
+              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-1">Create a new password</h2>
+              <p className="text-xs text-[var(--foreground-muted)] max-w-[280px] leading-relaxed">
+                Your email link was verified. Choose a strong password you haven&apos;t used elsewhere.
+              </p>
+            </div>
           ) : isForgotPassword ? (
             <>
               <button type="button" onClick={resetToSignIn} className="mb-3 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] focus:outline-none">
@@ -292,32 +311,46 @@ export default function LoginPage() {
 
           {/* ── Set new password form (after clicking reset link) ── */}
           {isResetMode ? (
-            <form onSubmit={handleSetNewPassword} className="flex flex-col gap-3">
-              <input
-                type="password"
-                placeholder="New password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
-              />
-              <input
-                type="password"
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
-              />
+            <form onSubmit={handleSetNewPassword} className="flex flex-col gap-4">
+              <div className="space-y-1.5">
+                <label htmlFor="reset-new-password" className="block text-xs font-medium text-[var(--foreground-secondary)]">
+                  New password
+                </label>
+                <input
+                  id="reset-new-password"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="reset-confirm-password" className="block text-xs font-medium text-[var(--foreground-secondary)]">
+                  Confirm password
+                </label>
+                <input
+                  id="reset-confirm-password"
+                  type="password"
+                  placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] px-4 py-3.5 font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] px-4 py-3.5 font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? <Spinner /> : null}
-                <span className="text-sm">Set new password</span>
+                <span className="text-sm">Update password and continue</span>
               </button>
             </form>
 

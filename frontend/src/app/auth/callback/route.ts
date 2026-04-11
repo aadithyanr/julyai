@@ -24,10 +24,13 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=invalid_reset_link`);
   }
 
-  // Handle OAuth / magic link code exchange
+  // Handle OAuth / magic link / PKCE password recovery (code + type=recovery)
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      if (type === "recovery") {
+        return NextResponse.redirect(`${origin}/login?recovery=1`);
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
