@@ -63,9 +63,10 @@ import { insertChatMessage, getChatHistory } from "@/lib/supabase/userHistories"
 import { createClient } from "@/lib/supabase/client";
 import { getApiBase } from "@/neuralcanvas/lib/trainingApi";
 import { exportModelPackage } from "@/neuralcanvas/lib/exportApi";
+import { createDeployment, getDocsUrl } from "@/neuralcanvas/lib/deployApi";
 import ReactMarkdown from "react-markdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Hand, Square, Sparkles, Download } from "lucide-react";
+import { Hand, Square, Sparkles, Download, Zap } from "lucide-react";
 import {
   InputBlock,
   InputSpaceBlock,
@@ -673,6 +674,43 @@ function CanvasInner({
     }
   }, [nodes, edges, effectivePlaygroundId, playgroundName]);
 
+  // ── Deploy model as API ──
+  const [deploying, setDeploying] = useState(false);
+  const handleDeploy = useCallback(async () => {
+    if (nodes.length === 0) return;
+    const defaultName = playgroundName || "Untitled";
+    const customName = window.prompt("Enter a name for this deployment:", defaultName);
+    if (customName === null) return; // User cancelled
+
+    setDeploying(true);
+    try {
+      const graph = neuralCanvasToGraphSchema(
+        nodes.filter((n) => n.type !== CHALLENGE_TASK_NODE_TYPE),
+        edges,
+        { name: customName }
+      );
+      // Get user_id from supabase
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      const userId = data.user?.id;
+
+      const result = await createDeployment({
+        graph,
+        playground_id: effectivePlaygroundId ?? undefined,
+        name: customName,
+        user_id: userId,
+      });
+
+      // Open docs page in new tab
+      const docsUrl = getDocsUrl(result.id);
+      window.open(docsUrl, "_blank");
+    } catch (e) {
+      console.error("Deploy failed:", e);
+    } finally {
+      setDeploying(false);
+    }
+  }, [nodes, edges, effectivePlaygroundId, playgroundName]);
+
   // ── Submit challenge (compare current graph to solution) ──
   const handleSubmitChallenge = useCallback(() => {
     if (!challengeSolutionGraph) return;
@@ -1087,6 +1125,11 @@ function CanvasInner({
               <ExportButton
                 onExport={handleExportPackage}
                 exporting={exporting}
+                disabled={nodes.length === 0}
+              />
+              <DeployButton
+                onDeploy={handleDeploy}
+                deploying={deploying}
                 disabled={nodes.length === 0}
               />
               <TrainingToggle
@@ -1525,6 +1568,41 @@ function ExportButton({
     >
       <Download size={12} strokeWidth={2.5} />
       {exporting ? "Exporting…" : "Export"}
+    </button>
+  );
+}
+
+// ── Deploy model as API button ──
+function DeployButton({
+  onDeploy,
+  deploying,
+  disabled,
+}: {
+  onDeploy: () => void;
+  deploying: boolean;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onDeploy}
+      disabled={disabled || deploying}
+      className={`
+        flex items-center gap-2 px-3 py-1.5 rounded-full
+        border text-[11px] font-medium
+        transition-all duration-200 select-none shadow-sm
+        ${
+          deploying
+            ? "bg-amber-500/10 border-amber-500/50 text-amber-500"
+            : disabled
+              ? "bg-[var(--surface)]/80 border-[var(--border)] text-[var(--foreground-muted)] cursor-not-allowed"
+              : "bg-[var(--surface)] border-[var(--border)] text-[var(--foreground-secondary)] hover:text-amber-500 hover:border-amber-500/50 hover:bg-amber-500/10 hover:shadow-md"
+        }
+      `}
+      title={disabled ? "Add blocks to deploy" : "Deploy model as live API"}
+    >
+      <Zap size={12} strokeWidth={2.5} />
+      {deploying ? "Deploying\u2026" : "Deploy"}
     </button>
   );
 }

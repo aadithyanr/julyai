@@ -14,7 +14,7 @@ except ImportError:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import feedback, graphs, datasets, training, models, export
+from routers import feedback, graphs, datasets, training, models, export, deploy
 from config import settings
 
 app = FastAPI(
@@ -37,7 +37,7 @@ ALLOWED_ORIGINS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://.*[\._]?najrudin\.com\.np",
+    allow_origin_regex=r"https://.*[\._]?(najrudin\.com\.np|currycoder\.link)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +50,15 @@ app.include_router(datasets.router)
 app.include_router(training.router)
 app.include_router(models.router)
 app.include_router(export.router)
+app.include_router(deploy.router)
+
+
+@app.on_event("startup")
+async def startup_auto_migrate_and_load():
+    """Auto-create missing tables and load active deployments on server start."""
+    from auto_migrate import run_auto_migrations
+    run_auto_migrations()
+    await deploy.load_all_deployments()
 
 
 @app.get("/")

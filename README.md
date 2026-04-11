@@ -24,6 +24,9 @@ npm install
 npm run dev
 ```
 
+### Database Initialization
+JulyAI uses Supabase. Ensure you set `SUPABASE_DB_URL` in `backend/.env` with your direct Postgres URL so the backend can automatically run migrations (create tables) when setting up a fresh Supabase project. Alternatively, manually run the `.sql` files in `backend/migrations/` in your Supabase SQL editor.
+
 ### Backend
 ```bash
 cd backend

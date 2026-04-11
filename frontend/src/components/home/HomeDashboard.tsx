@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Trash2, Plus, Layout, Trophy, FileText, ChevronRight, Check, LogOut, Download } from "lucide-react";
+import { Trash2, Plus, Layout, Trophy, FileText, ChevronRight, Check, LogOut, Download, Zap } from "lucide-react";
 import { exportModelPackage } from "@/neuralcanvas/lib/exportApi";
+import { createDeployment, getDocsUrl } from "@/neuralcanvas/lib/deployApi";
 import { listPlaygrounds, deletePlayground } from "@/lib/supabase/playgrounds";
 import { listLevels } from "@/lib/supabase/levels";
 import { getCompletedLevelNumbers } from "@/lib/supabase/levelCompletions";
@@ -14,8 +15,9 @@ import { getPaperProgress } from "@/lib/supabase/paperProgress";
 import { PAPER_WALKTHROUGHS } from "@/lib/paperWalkthroughs";
 import type { PlaygroundRow } from "@/types/playground";
 import type { LevelRow } from "@/types/level";
+import { DeployDashboard } from "@/components/deploy/DeployDashboard";
 
-type TabId = "playground" | "challenges" | "papers";
+type TabId = "playground" | "challenges" | "papers" | "deployments";
 
 export function HomeDashboard({ user }: { user: User }) {
   const supabase = createClient();
@@ -24,6 +26,7 @@ export function HomeDashboard({ user }: { user: User }) {
     const tab = searchParams.get("tab");
     if (tab === "challenges") return "challenges";
     if (tab === "papers") return "papers";
+    if (tab === "deployments") return "deployments";
     return "playground";
   });
   const [playgrounds, setPlaygrounds] = useState<PlaygroundRow[]>([]);
@@ -34,6 +37,7 @@ export function HomeDashboard({ user }: { user: User }) {
   const [levelsLoading, setLevelsLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [deployingId, setDeployingId] = useState<string | null>(null);
 
   const handleExportPlayground = async (e: React.MouseEvent, pg: PlaygroundRow) => {
     e.preventDefault();
@@ -52,6 +56,34 @@ export function HomeDashboard({ user }: { user: User }) {
     }
   };
 
+  const handleDeployPlayground = async (e: React.MouseEvent, pg: PlaygroundRow) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!pg.graph_json) return;
+
+    const customName = window.prompt("Enter a name for this deployment:", pg.name);
+    if (customName === null) return; // User cancelled
+    
+    setDeployingId(pg.id);
+    try {
+      const result = await createDeployment({
+        graph: pg.graph_json,
+        playground_id: pg.id,
+        name: customName || pg.name,
+        user_id: user.id,
+      });
+      // Open docs page in new tab
+      const docsUrl = getDocsUrl(result.id);
+      window.open(docsUrl, "_blank");
+      // Optionally switch to deploy tab
+      setActiveTab("deployments");
+    } catch (err) {
+      console.error("Deploy failed:", err);
+    } finally {
+      setDeployingId(null);
+    }
+  };
+
   const handleDeletePlayground = async (e: React.MouseEvent, id: string, name: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -66,6 +98,7 @@ export function HomeDashboard({ user }: { user: User }) {
     const tab = searchParams.get("tab");
     if (tab === "challenges") setActiveTab("challenges");
     else if (tab === "papers") setActiveTab("papers");
+    else if (tab === "deployments") setActiveTab("deployments");
   }, [searchParams]);
 
   useEffect(() => {
@@ -113,6 +146,7 @@ export function HomeDashboard({ user }: { user: User }) {
     { id: "playground", label: "Playground", icon: <Layout className="h-4 w-4" /> },
     { id: "challenges", label: "Challenges", icon: <Trophy className="h-4 w-4" /> },
     { id: "papers", label: "Papers", icon: <FileText className="h-4 w-4" /> },
+    { id: "deployments", label: "Deployments", icon: <Zap className="h-4 w-4" /> },
   ];
 
   return (
@@ -155,7 +189,9 @@ export function HomeDashboard({ user }: { user: User }) {
                 ? "Build and experiment with neural networks in your playgrounds."
                 : activeTab === "challenges"
                   ? "Level up your skills with guided challenges."
-                  : "Explore architecture designs from landmark papers."}
+                  : activeTab === "deployments"
+                    ? "Manage your live model API endpoints."
+                    : "Explore architecture designs from landmark papers."}
             </p>
 
             {/* ── Tab Navigation ──────────────────────────────────── */}
@@ -225,6 +261,23 @@ export function HomeDashboard({ user }: { user: User }) {
                           </div>
                         </Link>
                         <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeployPlayground(e, pg)}
+                            disabled={deployingId === pg.id}
+                            className="p-2 rounded-lg bg-[var(--surface)]/80 text-[var(--foreground-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-all disabled:opacity-50 shadow-sm"
+                            aria-label={`Deploy ${pg.name}`}
+                            title="Deploy as live API endpoint"
+                          >
+                            {deployingId === pg.id ? (
+                              <svg className="h-4 w-4 animate-spin text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" className="opacity-25" />
+                                <path d="M4 12a8 8 0 018-8" className="opacity-75" />
+                              </svg>
+                            ) : (
+                              <Zap className="h-4 w-4" />
+                            )}
+                          </button>
                           <button
                             type="button"
                             onClick={(e) => handleExportPlayground(e, pg)}
@@ -443,6 +496,13 @@ export function HomeDashboard({ user }: { user: User }) {
                     );
                   })()}
                 </div>
+              </section>
+            )}
+
+            {/* ═══ DEPLOYMENTS TAB ═══════════════════════════════════ */}
+            {activeTab === "deployments" && (
+              <section className="animate-fade-in">
+                <DeployDashboard userId={user.id} />
               </section>
             )}
           </div>

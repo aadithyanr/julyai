@@ -1,0 +1,11 @@
+{
+  "deployment_id": "5bd4a02f-0af9-4595-a260-4bd518d3bd2a",
+  "name": "Auto-saved from model: Model-17-45-291",
+  "input_shape": [
+    1,
+    28,
+    28
+  ],
+  "num_classes": 128,
+  "created_at": "2026-04-11T23:36:19.410434"
+}
