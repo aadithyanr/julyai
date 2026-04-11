@@ -4,6 +4,7 @@ import { useGraphStore } from "@/store/graphStore";
 import { useTrainingStore } from "@/store/trainingStore";
 import { serializeGraph } from "@/lib/serialization";
 import { getApiBase } from "@/lib/apiConfig";
+import { exportModelPackage } from "@/neuralcanvas/lib/exportApi";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPlayground, updatePlayground, getPlayground } from "@/lib/supabase/playgrounds";
@@ -15,6 +16,7 @@ export default function Toolbar({ playgroundId }: { playgroundId?: string }) {
   const [validating, setValidating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [validationResult, setValidationResult] = useState<{
     valid: boolean;
@@ -87,6 +89,23 @@ export default function Toolbar({ playgroundId }: { playgroundId?: string }) {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPackage = async () => {
+    if (nodes.length === 0) return;
+    setExporting(true);
+    try {
+      const graph = serializeGraph(nodes, edges);
+      await exportModelPackage({
+        graph,
+        playground_id: playgroundId,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Export failed";
+      setValidationResult({ valid: false, message: msg });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleSave = async () => {
     if (nodes.length === 0) return;
     setSaving(true);
@@ -152,6 +171,14 @@ export default function Toolbar({ playgroundId }: { playgroundId?: string }) {
           className="px-4 py-2 rounded-full text-sm font-medium bg-[var(--surface-elevated)] text-[var(--foreground-muted)] border border-[var(--border)] hover:bg-[var(--border-muted)] hover:text-[var(--foreground)] hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
         >
           Export JSON
+        </button>
+        <button
+          id="export-package-btn"
+          onClick={handleExportPackage}
+          disabled={exporting || nodes.length === 0}
+          className="px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+        >
+          {exporting ? "Exporting…" : "Export Package"}
         </button>
         <button
           onClick={clearGraph}

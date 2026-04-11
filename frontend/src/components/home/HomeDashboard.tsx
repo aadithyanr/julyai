@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Trash2, Plus, Layout, Trophy, FileText, ChevronRight, Check, LogOut } from "lucide-react";
+import { Trash2, Plus, Layout, Trophy, FileText, ChevronRight, Check, LogOut, Download } from "lucide-react";
+import { exportModelPackage } from "@/neuralcanvas/lib/exportApi";
 import { listPlaygrounds, deletePlayground } from "@/lib/supabase/playgrounds";
 import { listLevels } from "@/lib/supabase/levels";
 import { getCompletedLevelNumbers } from "@/lib/supabase/levelCompletions";
@@ -32,6 +33,24 @@ export function HomeDashboard({ user }: { user: User }) {
   const [loading, setLoading] = useState(true);
   const [levelsLoading, setLevelsLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  const handleExportPlayground = async (e: React.MouseEvent, pg: PlaygroundRow) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!pg.graph_json) return;
+    setExportingId(pg.id);
+    try {
+      await exportModelPackage({
+        graph: pg.graph_json as any,
+        playground_id: pg.id,
+      });
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   const handleDeletePlayground = async (e: React.MouseEvent, id: string, name: string) => {
     e.preventDefault();
@@ -205,15 +224,34 @@ export function HomeDashboard({ user }: { user: User }) {
                             </p>
                           </div>
                         </Link>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeletePlayground(e, pg.id, pg.name)}
-                          disabled={deletingId === pg.id}
-                          className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-[var(--surface)]/80 text-[var(--foreground-muted)] hover:text-red-500 hover:bg-[var(--danger-muted)] transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50 shadow-sm"
-                          aria-label={`Delete ${pg.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => handleExportPlayground(e, pg)}
+                            disabled={exportingId === pg.id}
+                            className="p-2 rounded-lg bg-[var(--surface)]/80 text-[var(--foreground-muted)] hover:text-emerald-500 hover:bg-emerald-500/10 transition-all disabled:opacity-50 shadow-sm"
+                            aria-label={`Export ${pg.name}`}
+                            title="Export as Python package"
+                          >
+                            {exportingId === pg.id ? (
+                              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" className="opacity-25" />
+                                <path d="M4 12a8 8 0 018-8" className="opacity-75" />
+                              </svg>
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeletePlayground(e, pg.id, pg.name)}
+                            disabled={deletingId === pg.id}
+                            className="p-2 rounded-lg bg-[var(--surface)]/80 text-[var(--foreground-muted)] hover:text-red-500 hover:bg-[var(--danger-muted)] transition-all disabled:opacity-50 shadow-sm"
+                            aria-label={`Delete ${pg.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}

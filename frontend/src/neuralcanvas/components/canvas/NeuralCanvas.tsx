@@ -62,9 +62,10 @@ import { upsertPaperProgress } from "@/lib/supabase/paperProgress";
 import { insertChatMessage, getChatHistory } from "@/lib/supabase/userHistories";
 import { createClient } from "@/lib/supabase/client";
 import { getApiBase } from "@/neuralcanvas/lib/trainingApi";
+import { exportModelPackage } from "@/neuralcanvas/lib/exportApi";
 import ReactMarkdown from "react-markdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Hand, Square, Sparkles } from "lucide-react";
+import { Hand, Square, Sparkles, Download } from "lucide-react";
 import {
   InputBlock,
   InputSpaceBlock,
@@ -650,6 +651,28 @@ function CanvasInner({
     }
   }, [nodes, edges, effectivePlaygroundId, playgroundName, router, isPaperLevel, paperLevelNumber, paperStepIndex]);
 
+  // ── Export model package ──
+  const [exporting, setExporting] = useState(false);
+  const handleExportPackage = useCallback(async () => {
+    if (nodes.length === 0) return;
+    setExporting(true);
+    try {
+      const graph = neuralCanvasToGraphSchema(
+        nodes.filter((n) => n.type !== CHALLENGE_TASK_NODE_TYPE),
+        edges,
+        { name: playgroundName || "Untitled" }
+      );
+      await exportModelPackage({
+        graph,
+        playground_id: effectivePlaygroundId ?? undefined,
+      });
+    } catch (e) {
+      console.error("Export failed:", e);
+    } finally {
+      setExporting(false);
+    }
+  }, [nodes, edges, effectivePlaygroundId, playgroundName]);
+
   // ── Submit challenge (compare current graph to solution) ──
   const handleSubmitChallenge = useCallback(() => {
     if (!challengeSolutionGraph) return;
@@ -1061,6 +1084,11 @@ function CanvasInner({
           />
           {challengeLevelNumber == null && (
             <div className="flex items-center gap-2">
+              <ExportButton
+                onExport={handleExportPackage}
+                exporting={exporting}
+                disabled={nodes.length === 0}
+              />
               <TrainingToggle
                 open={trainingPanelOpen}
                 onToggle={() => {
@@ -1463,6 +1491,40 @@ function SaveButton({
         <polyline points="7 3 7 8 15 8" />
       </svg>
       {label}
+    </button>
+  );
+}
+// ── Export model package button ──
+function ExportButton({
+  onExport,
+  exporting,
+  disabled,
+}: {
+  onExport: () => void;
+  exporting: boolean;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onExport}
+      disabled={disabled || exporting}
+      className={`
+        flex items-center gap-2 px-3 py-1.5 rounded-full
+        border text-[11px] font-medium
+        transition-all duration-200 select-none shadow-sm
+        ${
+          exporting
+            ? "bg-[var(--accent-muted)] border-[var(--accent)] text-[var(--accent)]"
+            : disabled
+              ? "bg-[var(--surface)]/80 border-[var(--border)] text-[var(--foreground-muted)] cursor-not-allowed"
+              : "bg-[var(--surface)] border-[var(--border)] text-[var(--foreground-secondary)] hover:text-emerald-500 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:shadow-md"
+        }
+      `}
+      title={disabled ? "Add blocks to export" : "Download standalone Python project"}
+    >
+      <Download size={12} strokeWidth={2.5} />
+      {exporting ? "Exporting…" : "Export"}
     </button>
   );
 }

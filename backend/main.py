@@ -14,7 +14,7 @@ except ImportError:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import feedback, graphs, datasets, training, models
+from routers import feedback, graphs, datasets, training, models, export
 from config import settings
 
 app = FastAPI(
@@ -49,6 +49,7 @@ app.include_router(graphs.router)
 app.include_router(datasets.router)
 app.include_router(training.router)
 app.include_router(models.router)
+app.include_router(export.router)
 
 
 @app.get("/")
