@@ -228,7 +228,11 @@ export default function LoginPage() {
       setError(err.message);
     } else {
       recoveryPendingRef.current = false;
-      router.replace("/");
+      setIsResetMode(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      await supabase.auth.signOut();
+      router.replace("/login");
     }
   };
 

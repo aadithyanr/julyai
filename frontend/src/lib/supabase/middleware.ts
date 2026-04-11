@@ -43,7 +43,11 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!isAuthCallback) {
-      if (isLogin && user) {
+      const isLoginRecoveryFlow =
+        isLogin &&
+        (request.nextUrl.searchParams.get("recovery") === "1" ||
+          request.nextUrl.searchParams.get("recovery") === "true");
+      if (isLogin && user && !isLoginRecoveryFlow) {
         return NextResponse.redirect(new URL("/", request.url));
       }
       if (isPlayground && !user) {
