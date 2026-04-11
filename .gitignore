@@ -9,9 +9,9 @@ env/
 frontend/.next/
 frontend/dist/
 
-# Environment variables (Included by user request for private repo)
-# .env
-# .env.local
+# Environment variables
+.env
+.env.local
 
 # Local data / Python
 backend/data/
