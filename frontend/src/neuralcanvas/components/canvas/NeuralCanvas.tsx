@@ -41,13 +41,14 @@ import { createClient } from "@/lib/supabase/client";
 import { getApiBase } from "@/neuralcanvas/lib/trainingApi";
 import { exportModelPackage } from "@/neuralcanvas/lib/exportApi";
 import { createDeployment, getDocsUrl } from "@/neuralcanvas/lib/deployApi";
+import { createShareLink, revokeShareLink } from "@/neuralcanvas/lib/shareApi";
 import ReactMarkdown from "react-markdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   MousePointer2, Hand, Minus, Plus, Download, ArrowLeft,
   Save, CheckCircle, XCircle, Loader2, Maximize2, Cpu,
   MessageSquare, X, ChevronUp, Check,
-  Trash2, Zap
+  Trash2, Zap, Share2, Copy, Link2,
 } from "lucide-react";
 import {
   InputBlock, InputSpaceBlock, BoardBlock, TextInputBlock, OutputBlock,
@@ -207,7 +208,191 @@ function ToolbarBtn({
 // ---------------------------------------------------------------------------
 
 function ToolbarDivider() {
-  return <div className="w-px h-5 bg-gray-100 mx-0.5 shrink-0" />;
+  return <div className="h-4 w-[1px] bg-gray-200 rounded-full" />;
+}
+
+// ---------------------------------------------------------------------------
+// ShareModal — Banani-style share dialog (backed by /api/share)
+// ---------------------------------------------------------------------------
+
+function ShareModal({ open, onClose, playgroundId, userId }: {
+  open: boolean;
+  onClose: () => void;
+  playgroundId?: string | null;
+  userId?: string | null;
+}) {
+  const [token, setToken] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const shareUrl = typeof window !== "undefined" && token
+    ? `${window.location.origin}/shared/${token}`
+    : "";
+
+  useEffect(() => {
+    if (!open || !playgroundId || !userId || token) return;
+    setCreating(true);
+    setError(null);
+    createShareLink(playgroundId, userId)
+      .then((res) => setToken(res.token))
+      .catch((e: Error) => setError(e.message ?? "Failed to create share link"))
+      .finally(() => setCreating(false));
+  }, [open, playgroundId, userId, token]);
+
+  const handleCopy = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2200);
+  };
+
+  const handleRevoke = async () => {
+    if (!token || !userId || !window.confirm("Revoke this share link?")) return;
+    setRevoking(true);
+    try { await revokeShareLink(token, userId); setToken(null); }
+    catch (e) { console.error(e); }
+    finally { setRevoking(false); }
+  };
+
+  const handleClose = () => { setCopied(false); setError(null); onClose(); };
+
+  if (!open) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-[2px]"
+        onClick={handleClose}
+      />
+
+      {/* Modal — exact Banani dimensions and layout */}
+      <div
+        className="
+          fixed left-[50%] top-[50%] z-[201]
+          w-full max-w-sm
+          translate-x-[-50%] translate-y-[-50%]
+          grid gap-5 overflow-hidden
+          rounded-2xl bg-white p-[18px] text-sm shadow-lg
+          duration-100
+          data-[state=open]:animate-in data-[state=open]:fade-in-0
+          data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2
+          data-[state=open]:slide-in-from-top-[48%]
+        "
+        data-state="open"
+        style={{ pointerEvents: "auto" }}
+      >
+        {/* Header */}
+        <div className="flex flex-col gap-1">
+          <div className="font-semibold text-black">Share</div>
+          <div className="text-sm text-black/40">
+            Anyone with the link can view and run inference on this playground.
+          </div>
+        </div>
+
+        <hr className="-mx-[18px] border-black/10" />
+
+        {/* URL display + Copy button */}
+        <div className="flex min-w-0 flex-col gap-3">
+          {/* URL pill */}
+          <div className="flex h-9 items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 min-w-0">
+            <Link2 size={13} className="shrink-0 text-black/30" />
+            {creating ? (
+              <span className="flex-1 text-[12px] text-black/30 font-medium truncate">Generating link…</span>
+            ) : error ? (
+              <span className="flex-1 text-[12px] text-red-400 font-medium truncate">{error}</span>
+            ) : shareUrl ? (
+              <span className="flex-1 truncate font-mono text-[12px] text-black/50 select-all">{shareUrl}</span>
+            ) : (
+              <span className="flex-1 text-[12px] text-black/30">Save the playground first to get a link</span>
+            )}
+          </div>
+
+          {/* Full-width blue Copy link button — exact Banani style */}
+          <button
+            onClick={handleCopy}
+            disabled={!shareUrl || creating}
+            className="
+              bg-[#0066FF] text-white rounded-lg px-3 py-1.5
+              select-none content-center self-stretch
+              text-sm font-semibold
+              flex w-full items-center justify-center gap-1.5
+              hover:bg-blue-700 transition-colors
+              disabled:opacity-40
+            "
+          >
+            {creating ? (
+              <><Loader2 size={16} className="animate-spin" /> Creating link…</>
+            ) : copied ? (
+              <><Check size={16} strokeWidth={2.5} /> Copied!</>
+            ) : (
+              <>
+                Copy link
+                {/* Banani's link/chain SVG */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                  <path d="M16.6629 7.33714L15.9558 8.04424M15.9558 13.0863C15.5652 13.4768 15.5652 14.11 15.9558 14.5005C16.3463 14.891 16.9794 14.891 17.37 14.5005L16.6629 13.7934L15.9558 13.0863ZM7.33714 16.6629L8.04424 15.9558M14.5005 17.37C14.891 16.9794 14.891 16.3463 14.5005 15.9558C14.11 15.5652 13.4768 15.5652 13.0863 15.9558L13.7934 16.6629L14.5005 17.37ZM8.04425 10.9137C8.43477 10.5232 8.43477 9.89001 8.04425 9.49948C7.65372 9.10896 7.02056 9.10896 6.63003 9.49948L7.33714 10.2066L8.04425 10.9137ZM9.49948 6.63003C9.10896 7.02056 9.10896 7.65372 9.49948 8.04424C9.89001 8.43477 10.5232 8.43477 10.9137 8.04425L10.2066 7.33714L9.49948 6.63003ZM14.1418 11.2724C14.5324 10.8819 14.5324 10.2487 14.1418 9.85817C13.7513 9.46764 13.1181 9.46764 12.7276 9.85817L13.4347 10.5653L14.1418 11.2724ZM9.85817 12.7276C9.46764 13.1181 9.46764 13.7513 9.85817 14.1418C10.2487 14.5324 10.8819 14.5324 11.2724 14.1418L10.5653 13.4347L9.85817 12.7276ZM16.6629 7.33714L15.9558 8.04424C17.3481 9.43657 17.3481 11.694 15.9558 13.0863L16.6629 13.7934L17.37 14.5005C19.5433 12.3271 19.5433 8.80341 17.37 6.63003L16.6629 7.33714ZM7.33714 16.6629L6.63003 17.37C8.80341 19.5433 12.3271 19.5433 14.5005 17.37L13.7934 16.6629L13.0863 15.9558C11.694 17.3481 9.43657 17.3481 8.04424 15.9558L7.33714 16.6629ZM7.33714 10.2066L6.63003 9.49948C4.45666 11.6729 4.45665 15.1966 6.63003 17.37L7.33714 16.6629L8.04424 15.9558C6.65192 14.5634 6.65192 12.306 8.04425 10.9137L7.33714 10.2066ZM10.2066 7.33714L10.9137 8.04425C12.306 6.65192 14.5634 6.65192 15.9558 8.04424L16.6629 7.33714L17.37 6.63003C15.1966 4.45666 11.6729 4.45666 9.49948 6.63003L10.2066 7.33714ZM13.4347 10.5653L12.7276 9.85817L9.85817 12.7276L10.5653 13.4347L11.2724 14.1418L14.1418 11.2724L13.4347 10.5653Z" fill="currentColor" />
+                </svg>
+              </>
+            )}
+          </button>
+        </div>
+
+        <hr className="-mx-[18px] border-black/10" />
+
+        {/* Access options — Banani radio style */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-semibold text-black">View access</div>
+          <div className="flex flex-col gap-2">
+            {/* Anyone with link option */}
+            <div className="rounded-lg bg-gray-50 p-3" style={{ backgroundColor: "color-mix(in srgb, #0066FF 15%, transparent)" }}>
+              <div className="flex items-start gap-1.5">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white border border-black/10 shadow-sm mt-0.5">
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none">
+                    <path d="M16 11H10M16 11H14V9C14 7.89543 13.1046 7 12 7C10.8954 7 10 7.89543 10 9V11M16 11V17H8V11H10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black/50" />
+                  </svg>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-black">Anyone with the link</span>
+                  <span className="text-sm text-black/40">Can view the architecture and run inference</span>
+                </div>
+                {/* Checkmark */}
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="ml-auto shrink-0 text-[#0066FF]">
+                  <path d="M6 10.6667L8.83077 14L14 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Revoke */}
+        {token && (
+          <>
+            <hr className="-mx-[18px] border-black/10" />
+            <button
+              onClick={handleRevoke}
+              disabled={revoking}
+              className="text-left text-sm font-semibold text-black/30 hover:text-red-400 transition-colors disabled:opacity-40"
+            >
+              {revoking ? "Revoking…" : "Revoke link"}
+            </button>
+          </>
+        )}
+
+        {/* Close X — exact Banani position */}
+        <button
+          onClick={handleClose}
+          className="absolute right-[18px] top-[18px] rounded-sm opacity-70 transition-opacity hover:opacity-100"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-black/40">
+            <path d="M9.9994 10.0005L5 15.0004M9.9994 10.0005L15 15.001M9.9994 10.0005L5 5.0012M9.9994 10.0005L15 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <span className="sr-only">Close</span>
+        </button>
+      </div>
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -260,6 +445,7 @@ function CanvasInner({
   const [feedbackMessages, setFeedbackMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [feedbackChatOpen, setFeedbackChatOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [shareOpen, setShareOpen] = useState(false);
   const router = useRouter();
 
   // ── Sync playground id ──
@@ -851,7 +1037,7 @@ function CanvasInner({
           <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
             {/* Challenge submit */}
             {challengeSolutionGraph && !isPaperLevel && (
-              <FloatingPanel className="p-1">
+              <div className="touch-pan-y-only shadow-[0_0px_1px_0_rgba(0,0,0,0.20),0_4px_16px_0_rgba(0,0,0,0.08)] rounded-2xl bg-white p-1.5">
                 <button
                   type="button"
                   onClick={handleSubmitChallenge}
@@ -866,115 +1052,132 @@ function CanvasInner({
                   {submitResult === "correct" ? <Check size={13} strokeWidth={2.5} /> : <CheckCircle size={13} strokeWidth={2} />}
                   {submitResult === "correct" ? "Correct!" : submitResult === "wrong" ? "Not quite" : "Submit"}
                 </button>
-              </FloatingPanel>
+              </div>
             )}
 
-            <FloatingPanel className="flex items-center p-1 gap-0.5">
-              {/* Save */}
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saveStatus === "saving" || nodes.length === 0}
-                className={`flex items-center gap-1.5 px-3 h-8 rounded-xl text-[12px] font-bold transition-all duration-150 select-none ${saveStatus === "saved"
-                  ? "bg-green-50 text-green-600"
-                  : saveStatus === "error"
-                    ? "bg-red-50 text-red-500"
-                    : saveStatus === "saving"
-                      ? "bg-gray-50 text-gray-400 cursor-not-allowed"
-                      : "bg-gray-50 text-gray-600 hover:bg-gray-100 disabled:opacity-40"
-                  }`}
-                title="Save"
-              >
-                {saveStatus === "saving"
-                  ? <Loader2 size={13} className="animate-spin" />
-                  : saveStatus === "saved"
-                    ? <Check size={13} strokeWidth={2.5} />
-                    : saveStatus === "error"
-                      ? <XCircle size={13} />
-                      : <Save size={13} strokeWidth={2} />
-                }
-                {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? "Error" : "Save"}
-              </button>
+            <div className="touch-pan-y-only shadow-[0_0px_1px_0_rgba(0,0,0,0.20),0_8px_24px_0_rgba(0,0,0,0.10)] rounded-2xl bg-white p-1.5">
+              <div className="relative flex items-center gap-1.5">
 
-              {challengeLevelNumber == null && (
-                <>
-                  <ToolbarDivider />
+                {/* Save */}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saveStatus === "saving" || nodes.length === 0}
+                  className={`
+                    rounded-lg py-1.5 select-none content-center self-stretch
+                    text-sm font-semibold flex h-8 items-center px-2.5 gap-1.5
+                    transition-all duration-150
+                    ${saveStatus === "saved" ? "bg-green-50 text-green-600"
+                      : saveStatus === "error" ? "bg-red-50 text-red-500"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"}
+                  `}
+                  title="Save"
+                >
+                  {saveStatus === "saving" ? <Loader2 size={14} className="animate-spin" />
+                    : saveStatus === "saved" ? <Check size={14} strokeWidth={2.5} />
+                      : saveStatus === "error" ? <XCircle size={14} />
+                        : <Save size={14} strokeWidth={2} />}
+                  {saveStatus === "saving" ? "Saving…"
+                    : saveStatus === "saved" ? "Saved"
+                      : saveStatus === "error" ? "Error"
+                        : "Save"}
+                </button>
 
-                  {/* Export */}
-                  <button
-                    type="button"
-                    onClick={handleExportPackage}
-                    disabled={exporting || nodes.length === 0}
-                    className="flex items-center gap-1.5 px-3 h-8 rounded-xl text-[12px] font-bold bg-gray-50 text-gray-600 hover:bg-gray-100 disabled:opacity-40 transition-all duration-150 select-none"
-                    title="Export Python package"
-                  >
-                    {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} strokeWidth={2} />}
-                    {exporting ? "Exporting…" : "Export"}
-                  </button>
+                {challengeLevelNumber == null && (
+                  <>
+                    {/* Export */}
+                    <button
+                      type="button"
+                      onClick={handleExportPackage}
+                      disabled={exporting || nodes.length === 0}
+                      className="rounded-lg px-2.5 py-1.5 select-none content-center self-stretch text-sm font-semibold h-8 flex items-center gap-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition-all"
+                      title="Export Python package"
+                    >
+                      {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={2} />}
+                      Export
+                    </button>
 
-                  {/* Deploy */}
-                  <button
-                    type="button"
-                    onClick={handleDeploy}
-                    disabled={deploying || nodes.length === 0}
-                    className={`flex items-center gap-1.5 px-3 h-8 rounded-xl text-[12px] font-bold transition-all duration-150 select-none ${deploying ? "bg-amber-100 text-amber-500" : "bg-gray-50 text-gray-600 hover:text-amber-500 hover:bg-amber-50 disabled:opacity-40"}`}
-                    title="Deploy as live API endpoint"
-                  >
-                    {deploying ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} strokeWidth={2} />}
-                    {deploying ? "Deploying…" : "Deploy"}
-                  </button>
+                    {/* Deploy */}
+                    <button
+                      type="button"
+                      onClick={handleDeploy}
+                      disabled={deploying || nodes.length === 0}
+                      className={`
+                        rounded-lg px-2.5 py-1.5 select-none content-center self-stretch
+                        text-sm font-semibold h-8 flex items-center gap-1.5
+                        transition-all disabled:opacity-40
+                        ${deploying ? "bg-amber-100 text-amber-500" : "bg-gray-100 text-gray-600 hover:text-amber-500 hover:bg-amber-50"}
+                      `}
+                      title="Deploy as live API"
+                    >
+                      {deploying ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} strokeWidth={2} />}
+                      {deploying ? "Deploying…" : "Deploy"}
+                    </button>
 
-                  {onDeletePlayground && (
-                    <>
-                      <ToolbarDivider />
-                      {/* Delete */}
+                    {onDeletePlayground && (
                       <button
                         type="button"
                         onClick={onDeletePlayground}
                         disabled={deleting}
-                        className="flex items-center gap-1.5 px-3 h-8 rounded-xl text-[12px] font-bold bg-gray-50 text-red-500 hover:bg-red-50 transition-all duration-150 select-none disabled:opacity-40"
-                        title="Delete Workspace"
+                        className="rounded-lg px-2 py-1.5 select-none content-center self-stretch text-sm font-semibold h-8 flex items-center gap-1.5 text-red-400 hover:bg-red-50 transition-all disabled:opacity-40"
+                        title="Delete workspace"
                       >
-                        {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} strokeWidth={2} />}
-                        {deleting ? "Deleting…" : "Delete"}
+                        {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} strokeWidth={2} />}
                       </button>
-                    </>
-                  )}
+                    )}
 
-                  <ToolbarDivider />
-
-                  {/* Train */}
-                  <button
-                    type="button"
-                    onClick={() => { setInferencePanelOpen(false); setTrainingPanelOpen((o) => !o); }}
-                    className={`flex items-center gap-1.5 px-3 h-8 rounded-xl text-[12px] font-bold transition-all duration-150 select-none ${trainingPanelOpen
-                      ? "bg-[#0066FF] text-white"
-                      : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                      }`}
-                    title="Open training panel"
-                  >
-                    <Cpu size={13} strokeWidth={2} />
-                    Train
-                  </button>
-
-                  {/* Inference */}
-                  {effectivePlaygroundId && (
+                    {/* Train — Banani play triangle icon */}
                     <button
                       type="button"
-                      onClick={() => { setTrainingPanelOpen(false); setInferencePanelOpen((o) => !o); }}
-                      className={`flex items-center gap-1.5 px-3 h-8 rounded-xl text-[12px] font-bold transition-all duration-150 select-none ${inferencePanelOpen
-                        ? "bg-[#0066FF] text-white"
-                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                        }`}
-                      title="Open inference panel"
+                      onClick={() => { setInferencePanelOpen(false); setTrainingPanelOpen((o) => !o); }}
+                      className={`
+                        rounded-lg py-1.5 select-none content-center self-stretch
+                        text-sm font-semibold flex h-8 items-center px-2 gap-1
+                        transition-all
+                        ${trainingPanelOpen ? "bg-gray-200 text-gray-800" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}
+                      `}
+                      title="Open training panel"
                     >
-                      <MessageSquare size={13} strokeWidth={2} />
-                      Inference
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                        <path d="M7 9.54722V14.4557C7 16.4167 7 17.3972 7.40831 17.9339C7.76395 18.4013 8.30709 18.6888 8.89362 18.72C9.567 18.7559 10.3778 18.2046 11.9994 17.1019L15.6086 14.6476C16.913 13.7607 17.5652 13.3172 17.7935 12.7608C17.9932 12.2743 17.9932 11.7287 17.7935 11.2421C17.5652 10.6858 16.913 10.2423 15.6086 9.3553L11.9994 6.90106C10.3778 5.79837 9.567 5.24703 8.89362 5.28289C8.30709 5.31414 7.76395 5.60162 7.40831 6.06907C7 6.60573 7 7.58623 7 9.54722Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </button>
-                  )}
-                </>
-              )}
-            </FloatingPanel>
+
+                    {/* Inference */}
+                    {effectivePlaygroundId && (
+                      <button
+                        type="button"
+                        onClick={() => { setTrainingPanelOpen(false); setInferencePanelOpen((o) => !o); }}
+                        className={`
+                          rounded-lg px-2.5 py-1.5 select-none content-center self-stretch
+                          text-sm font-semibold h-8 flex items-center gap-1.5
+                          transition-all
+                          ${inferencePanelOpen ? "bg-gray-200 text-gray-800" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}
+                        `}
+                        title="Open inference panel"
+                      >
+                        <MessageSquare size={14} strokeWidth={2} />
+                        Inference
+                      </button>
+                    )}
+
+                    {/* Share — PRIMARY blue, exact Banani */}
+                    <button
+                      type="button"
+                      onClick={() => setShareOpen(true)}
+                      disabled={!effectivePlaygroundId}
+                      className="bg-[#0066FF] text-white rounded-lg px-3 py-1.5 select-none content-center self-stretch text-sm font-semibold flex h-8 items-center gap-1 pr-2 hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                      title="Share playground"
+                    >
+                      Share
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                        <path d="M5 14V16C5 17.6569 6.34315 19 8 19H16C17.6569 19 19 17.6569 19 16V14M11.9995 12V5M11.9995 5L9 8M11.9995 5L15 8.00048" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Training & Inference Panels */}
@@ -1014,6 +1217,14 @@ function CanvasInner({
               />
             </div>
           )}
+
+          {/* Share Modal */}
+          <ShareModal
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            playgroundId={effectivePlaygroundId}
+            userId={userId}
+          />
 
           {/* Peep inside overlay */}
           <PeepInsideOverlay />
