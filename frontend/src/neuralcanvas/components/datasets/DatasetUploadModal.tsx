@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Upload, X, FileSpreadsheet, Image } from "lucide-react";
+import { Upload, X, FileSpreadsheet, Image, FileText } from "lucide-react";
 import { uploadDataset, type DatasetInfo } from "@/neuralcanvas/lib/trainingApi";
 
 const MAX_FILE_SIZE_MB = 200;
@@ -25,6 +25,7 @@ export function DatasetUploadModal({ open, onClose, onUploaded, accessToken }: D
 
   const isCSV = file?.name.toLowerCase().endsWith(".csv");
   const isZip = file?.name.toLowerCase().endsWith(".zip");
+  const isTxt = file?.name.toLowerCase().endsWith(".txt");
 
   const reset = useCallback(() => {
     setFile(null);
@@ -52,8 +53,8 @@ export function DatasetUploadModal({ open, onClose, onUploaded, accessToken }: D
 
     // Validate extension
     const ext = f.name.split(".").pop()?.toLowerCase();
-    if (ext !== "csv" && ext !== "zip") {
-      setError("Only .csv and .zip files are supported");
+    if (ext !== "csv" && ext !== "zip" && ext !== "txt") {
+      setError("Only .csv, .zip, and .txt files are supported");
       return;
     }
 
@@ -81,6 +82,7 @@ export function DatasetUploadModal({ open, onClose, onUploaded, accessToken }: D
         // Not critical if header parsing fails
       }
     }
+    // .txt — no header parsing needed; character-level tokenizer is handled on the backend
   }, []);
 
   const handleDrop = useCallback(
@@ -157,13 +159,19 @@ export function DatasetUploadModal({ open, onClose, onUploaded, accessToken }: D
                 <input
                   ref={inputRef}
                   type="file"
-                  accept=".csv,.zip"
+                  accept=".csv,.zip,.txt"
                   className="hidden"
                   onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                 />
                 {file ? (
                   <div className="flex items-center gap-2 text-sm text-[var(--foreground)]">
-                    {isCSV ? <FileSpreadsheet size={20} className="text-green-500" /> : <Image size={20} className="text-blue-500" />}
+                    {isCSV ? (
+                      <FileSpreadsheet size={20} className="text-green-500" />
+                    ) : isTxt ? (
+                      <FileText size={20} className="text-amber-500" />
+                    ) : (
+                      <Image size={20} className="text-blue-500" />
+                    )}
                     <span className="font-mono truncate max-w-[200px]">{file.name}</span>
                     <span className="text-[var(--foreground-muted)]">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
                   </div>
@@ -171,7 +179,7 @@ export function DatasetUploadModal({ open, onClose, onUploaded, accessToken }: D
                   <>
                     <Upload size={24} className="text-[var(--foreground-muted)]" />
                     <p className="text-sm text-[var(--foreground-muted)]">
-                      Drop a <strong>.csv</strong> or <strong>.zip</strong> file here, or click to browse
+                      Drop a <strong>.csv</strong>, <strong>.zip</strong>, or <strong>.txt</strong> file here, or click to browse
                     </p>
                     <p className="text-xs text-[var(--foreground-muted)] opacity-60">Max {MAX_FILE_SIZE_MB} MB</p>
                   </>
@@ -215,6 +223,13 @@ export function DatasetUploadModal({ open, onClose, onUploaded, accessToken }: D
               {isZip && (
                 <p className="text-xs text-[var(--foreground-muted)] opacity-70">
                   Zip should follow the ImageFolder convention: one folder per class, each containing images.
+                </p>
+              )}
+
+              {/* Txt hint */}
+              {isTxt && (
+                <p className="text-xs text-[var(--foreground-muted)] opacity-70">
+                  Text file will be tokenized character-by-character. The model will learn to predict the next character.
                 </p>
               )}
 

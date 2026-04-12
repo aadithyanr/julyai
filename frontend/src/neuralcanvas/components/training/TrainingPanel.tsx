@@ -89,12 +89,28 @@ export function TrainingPanel({ open: isOpen, onClose, nodes, edges, compact, pl
   }, [isOpen]);
 
   const datasetId = useMemo(() => {
+    // 1. Regular Input block (image/csv datasets)
     const inputNode = nodes.find((n) => (n.type as string) === "Input");
-    const params = inputNode?.data?.params;
-    if (params && typeof params === "object" && "dataset_id" in params) {
-      const id = (params as Record<string, unknown>).dataset_id;
-      return typeof id === "string" && id ? id : null;
+    if (inputNode) {
+      const params = inputNode.data?.params;
+      if (params && typeof params === "object" && "dataset_id" in params) {
+        const id = (params as Record<string, unknown>).dataset_id;
+        if (typeof id === "string" && id) return id;
+      }
     }
+
+    // 2. TextInput block (NLP / text datasets)
+    const textInputNode = nodes.find((n) => (n.type as string) === "TextInput");
+    if (textInputNode) {
+      const params = textInputNode.data?.params;
+      if (params && typeof params === "object" && "dataset_id" in params) {
+        const id = (params as Record<string, unknown>).dataset_id;
+        if (typeof id === "string" && id) return id;
+      }
+      // TextInput exists but no dataset chosen yet — still block training (force user to pick)
+      return null;
+    }
+
     return null;
   }, [nodes]);
 
@@ -390,11 +406,16 @@ export function TrainingPanel({ open: isOpen, onClose, nodes, edges, compact, pl
           </div>
         )}
 
-        {!datasetId && (
-          <div className="rounded-xl bg-[var(--warning-muted)] border border-[var(--warning)]/30 text-[var(--warning)] text-sm p-3">
-            Select a dataset on the Input block to train.
-          </div>
-        )}
+        {!datasetId && (() => {
+          const hasTextInput = nodes.some((n) => (n.type as string) === "TextInput");
+          return (
+            <div className="rounded-xl bg-[var(--warning-muted)] border border-[var(--warning)]/30 text-[var(--warning)] text-sm p-3">
+              {hasTextInput
+                ? "Select a text dataset on the Text Input block to train. Upload a .txt file using the ↑ button on the block."
+                : "Select a dataset on the Input block to train."}
+            </div>
+          );
+        })()}
 
         {/* Essential settings */}
         <div className="grid grid-cols-2 gap-3">
