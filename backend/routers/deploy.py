@@ -1164,7 +1164,7 @@ print(response.json()) # {{"status": "success", "loss": 0.45, "weights_updated":
 {layer_table}
 
 <div class="footer">
-  <p>Powered by <a href="https://julyai.currycoder.link">JulyAI</a> &middot; Deployment ID: <code class="inline-code">{deployment_id}</code></p>
+  <p>Powered by <a href="https://julyai.currycoders.link">JulyAI</a> &middot; Deployment ID: <code class="inline-code">{deployment_id}</code></p>
   <p style="margin-top:4px">Created: {created}</p>
 </div>
 

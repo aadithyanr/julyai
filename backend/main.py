@@ -37,7 +37,7 @@ ALLOWED_ORIGINS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://.*[\._]?(najrudin\.com\.np|currycoder\.link)",
+    allow_origin_regex=r"https://(julyai\.currycoders\.link|julyaiapi\.currycoders\.link)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,9 +56,28 @@ app.include_router(deploy.router)
 @app.on_event("startup")
 async def startup_auto_migrate_and_load():
     """Auto-create missing tables and load active deployments on server start."""
+    import asyncio
     from auto_migrate import run_auto_migrations
-    run_auto_migrations()
-    await deploy.load_all_deployments()
+    
+    def _sync_startup_tasks():
+        try:
+            run_auto_migrations()
+        except Exception as e:
+            print(f"Auto-migration failed: {e}")
+            
+        try:
+            # Run in a new event loop inside the thread since load_all_deployments is technically an async func
+            # but relies entirely on sync IO that would block the main thread.
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(deploy.load_all_deployments())
+            loop.close()
+            print("[\u2714] Auto-migration & Model cache successfully loaded in background.")
+        except Exception as e:
+            print(f"Deployment loading failed: {e}")
+
+    # Run the synchronous DB operations in a background thread so FastAPI boots instantly
+    asyncio.create_task(asyncio.to_thread(_sync_startup_tasks))
 
 
 @app.get("/")
