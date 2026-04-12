@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { listPlaygrounds, createPlayground, deletePlayground } from "@/lib/supabase/playgrounds";
 import { listLevels } from "@/lib/supabase/levels";
@@ -14,6 +14,7 @@ import type { GraphSchema } from "@/types/graph";
 import { Trash2, FileText, Zap } from "lucide-react";
 import { createDeployment, getDocsUrl } from "@/neuralcanvas/lib/deployApi";
 import { DeployDashboard } from "@/components/deploy/DeployDashboard";
+import { DeployNameModal } from "@/components/ui/DeployNameModal";
 
 type TabId = "home" | "tasks" | "library" | "deployments";
 
@@ -320,12 +321,24 @@ export function HomeDashboard({ user }: { user: User }) {
     else router.push(`/playground?prompt=${encodeURIComponent(query.trim())}`);
   };
 
-  const handleDeployPlayground = async (e: React.MouseEvent, pg: PlaygroundRow) => {
+  // Deploy-name modal state
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployDefaultName, setDeployDefaultName] = useState("");
+  const pendingDeployPgRef = React.useRef<PlaygroundRow | null>(null);
+
+  const handleDeployPlayground = (e: React.MouseEvent, pg: PlaygroundRow) => {
     e.preventDefault();
     e.stopPropagation();
     if (!pg.graph_json) return;
-    const customName = window.prompt("Enter a name for this deployment:", pg.name);
-    if (customName === null) return;
+    pendingDeployPgRef.current = pg;
+    setDeployDefaultName(pg.name);
+    setDeployModalOpen(true);
+  };
+
+  const handleDeployConfirm = async (customName: string) => {
+    const pg = pendingDeployPgRef.current;
+    if (!pg || !pg.graph_json) return;
+    setDeployModalOpen(false);
     setDeployingId(pg.id);
     try {
       const result = await createDeployment({
@@ -340,6 +353,7 @@ export function HomeDashboard({ user }: { user: User }) {
       console.error("Deploy failed:", err);
     } finally {
       setDeployingId(null);
+      pendingDeployPgRef.current = null;
     }
   };
 
@@ -660,6 +674,13 @@ export function HomeDashboard({ user }: { user: User }) {
         )}
 
       </div>
+
+      <DeployNameModal
+        open={deployModalOpen}
+        defaultName={deployDefaultName}
+        onConfirm={handleDeployConfirm}
+        onClose={() => setDeployModalOpen(false)}
+      />
     </div>
   );
 }

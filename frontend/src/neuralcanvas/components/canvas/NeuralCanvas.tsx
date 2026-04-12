@@ -42,6 +42,7 @@ import { getApiBase } from "@/neuralcanvas/lib/trainingApi";
 import { exportModelPackage } from "@/neuralcanvas/lib/exportApi";
 import { createDeployment, getDocsUrl } from "@/neuralcanvas/lib/deployApi";
 import { createShareLink, revokeShareLink } from "@/neuralcanvas/lib/shareApi";
+import { DeployNameModal } from "@/components/ui/DeployNameModal";
 import ReactMarkdown from "react-markdown";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -845,12 +846,17 @@ function CanvasInner({
 
   // ── Deploy model as API ──
   const [deploying, setDeploying] = useState(false);
-  const handleDeploy = useCallback(async () => {
-    if (nodes.length === 0) return;
-    const defaultName = playgroundName || "Untitled";
-    const customName = window.prompt("Enter a name for this deployment:", defaultName);
-    if (customName === null) return;
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployDefaultName, setDeployDefaultName] = useState("");
 
+  const handleDeploy = useCallback(() => {
+    if (nodes.length === 0) return;
+    setDeployDefaultName(playgroundName || "Untitled");
+    setDeployModalOpen(true);
+  }, [nodes, playgroundName]);
+
+  const handleDeployConfirm = useCallback(async (customName: string) => {
+    setDeployModalOpen(false);
     setDeploying(true);
     try {
       const graph = neuralCanvasToGraphSchema(
@@ -876,7 +882,7 @@ function CanvasInner({
     } finally {
       setDeploying(false);
     }
-  }, [nodes, edges, effectivePlaygroundId, playgroundName]);
+  }, [nodes, edges, effectivePlaygroundId]);
 
   return (
     <SuggestionContext.Provider value={suggestionContextValue}>
@@ -1230,6 +1236,14 @@ function CanvasInner({
           <PeepInsideOverlay />
         </div>
       </PlaygroundIdProvider>
+
+      {/* Deploy name modal */}
+      <DeployNameModal
+        open={deployModalOpen}
+        defaultName={deployDefaultName}
+        onConfirm={handleDeployConfirm}
+        onClose={() => setDeployModalOpen(false)}
+      />
     </SuggestionContext.Provider>
   );
 }
