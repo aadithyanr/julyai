@@ -1,31 +1,82 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const isRecoveryFlow = searchParams.get("recovery") === "1";
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "invalid_reset_link") {
+      setError("This reset link is invalid or expired. Request a new password reset email.");
+    } else if (errorParam === "auth") {
+      setError("Authentication failed. Please try again.");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) router.replace("/");
+      if (session && !isRecoveryFlow) router.replace("/");
     });
     return () => subscription.unsubscribe();
-  }, [supabase.auth, router]);
+  }, [supabase.auth, router, isRecoveryFlow]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setMessage(null);
     setLoading(true);
+
+    if (isRecoveryFlow) {
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters long.");
+        setLoading(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Passwords do not match.");
+        setLoading(false);
+        return;
+      }
+
+      const { error: err } = await supabase.auth.updateUser({ password });
+      if (err) {
+        setError(err.message);
+      } else {
+        setMessage("Password updated. You can sign in with your new password.");
+        setPassword("");
+        setConfirmPassword("");
+        router.replace("/login");
+      }
+      setLoading(false);
+      return;
+    }
+
+    if (isForgotPassword) {
+      const redirectTo = `${window.location.origin}/auth/callback?type=recovery`;
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+      if (err) {
+        setError(err.message);
+      } else {
+        setMessage("Reset link sent. Check your inbox and open the link to set a new password.");
+      }
+      setLoading(false);
+      return;
+    }
 
     if (isSignUp) {
       const { error: err } = await supabase.auth.signUp({ email, password });
@@ -65,12 +116,16 @@ export default function LoginPage() {
         {/* Heading */}
         <div className="mb-8 text-center">
           <h1 className="text-[28px] font-semibold text-black leading-tight mb-2">
-            {isSignUp ? "Create your account" : "Welcome back"}
+            {isRecoveryFlow ? "Set new password" : (isForgotPassword ? "Forgot password" : (isSignUp ? "Create your account" : "Welcome back"))}
           </h1>
           <p className="text-[14px] text-gray-400 font-medium">
-            {isSignUp
-              ? "Start building neural networks in seconds."
-              : "Sign in to continue to your workspace."}
+            {isRecoveryFlow
+              ? "Enter a new password for your account."
+              : (isForgotPassword
+                ? "We will send you a password reset link."
+                : (isSignUp
+                  ? "Start building neural networks in seconds."
+                  : "Sign in to continue to your workspace."))}
           </p>
         </div>
 
@@ -92,6 +147,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
             {/* Email */}
+            {!isRecoveryFlow && (
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide pl-0.5">
                 Email
@@ -112,11 +168,13 @@ export default function LoginPage() {
                 "
               />
             </div>
+            )}
 
             {/* Password */}
+            {!isForgotPassword && (
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide pl-0.5">
-                Password
+                {isRecoveryFlow ? "New password" : "Password"}
               </label>
               <input
                 type="password"
@@ -134,6 +192,42 @@ export default function LoginPage() {
                 "
               />
             </div>
+            )}
+
+            {isRecoveryFlow && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide pl-0.5">
+                  Confirm new password
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  className="
+                    w-full rounded-xl border border-gray-200 bg-gray-50
+                    px-3.5 py-2.5 text-[14px] font-medium text-black
+                    placeholder:text-gray-300 outline-none
+                    focus:border-[#0066FF]/50 focus:bg-white focus:ring-2 focus:ring-[#0066FF]/10
+                    transition-all duration-150
+                  "
+                />
+              </div>
+            )}
+
+            {!isSignUp && !isForgotPassword && !isRecoveryFlow && (
+              <div className="-mt-1 text-right">
+                <button
+                  type="button"
+                  onClick={() => { setIsForgotPassword(true); setError(null); setMessage(null); }}
+                  className="text-[12px] font-semibold text-gray-500 hover:text-[#0066FF] hover:underline underline-offset-2 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             {/* Submit — exact Banani Generate button style */}
             <button
@@ -155,11 +249,19 @@ export default function LoginPage() {
                     <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" strokeOpacity="0.3" />
                     <path d="M4 12a8 8 0 018-8" stroke="white" strokeWidth="2" strokeLinecap="round" />
                   </svg>
-                  {isSignUp ? "Creating account…" : "Signing in…"}
+                  {isRecoveryFlow
+                    ? "Updating password…"
+                    : (isForgotPassword
+                      ? "Sending reset link…"
+                      : (isSignUp ? "Creating account…" : "Signing in…"))}
                 </div>
               ) : (
                 <>
-                  {isSignUp ? "Create account" : "Sign in"}
+                  {isRecoveryFlow
+                    ? "Update password"
+                    : (isForgotPassword
+                      ? "Send reset link"
+                      : (isSignUp ? "Create account" : "Sign in"))}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path d="M11.9995 17V7M11.9995 7L8 11M11.9995 7L16 11.0005" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -171,15 +273,33 @@ export default function LoginPage() {
           {/* Toggle sign up / sign in */}
           <div className="mt-5 pt-4 border-t border-gray-100 text-center">
             <span className="text-[13px] text-gray-400 font-medium">
-              {isSignUp ? "Already have an account?" : "Don't have an account?"}
+              {isRecoveryFlow
+                ? "Remembered your password?"
+                : (isForgotPassword
+                  ? "Back to sign in?"
+                  : (isSignUp ? "Already have an account?" : "Don't have an account?"))}
             </span>
             {" "}
             <button
               type="button"
-              onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null); }}
+              onClick={() => {
+                if (isRecoveryFlow) {
+                  router.replace("/login");
+                } else if (isForgotPassword) {
+                  setIsForgotPassword(false);
+                } else {
+                  setIsSignUp(!isSignUp);
+                }
+                setError(null);
+                setMessage(null);
+              }}
               className="text-[13px] font-semibold text-[#0066FF] hover:underline underline-offset-2 transition-colors"
             >
-              {isSignUp ? "Sign in" : "Sign up"}
+              {isRecoveryFlow
+                ? "Sign in"
+                : (isForgotPassword
+                  ? "Sign in"
+                  : (isSignUp ? "Sign in" : "Sign up"))}
             </button>
           </div>
         </div>
