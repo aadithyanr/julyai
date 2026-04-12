@@ -10,6 +10,7 @@ import { listLevels } from "@/lib/supabase/levels";
 import { getCompletedLevelNumbers } from "@/lib/supabase/levelCompletions";
 import type { PlaygroundRow } from "@/types/playground";
 import type { LevelRow } from "@/types/level";
+import type { GraphSchema } from "@/types/graph";
 import { Trash2, FileText, Zap } from "lucide-react";
 import { createDeployment, getDocsUrl } from "@/neuralcanvas/lib/deployApi";
 import { DeployDashboard } from "@/components/deploy/DeployDashboard";
@@ -120,25 +121,81 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 // Neural net thumbnail
 // ---------------------------------------------------------------------------
 
-function WorkspaceThumbnail() {
+function WorkspaceThumbnail({ graph }: { graph?: GraphSchema | null }) {
+  if (!graph || !graph.nodes || graph.nodes.length === 0) {
+    return (
+      <div className="relative flex aspect-[300/170] w-full items-center justify-center overflow-hidden rounded-3xl border border-black/5 bg-[#f0f2f5]">
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="opacity-[0.12]">
+          <circle cx="12" cy="20" r="5" stroke="black" strokeWidth="2" />
+          <circle cx="12" cy="44" r="5" stroke="black" strokeWidth="2" />
+          <circle cx="32" cy="14" r="5" stroke="black" strokeWidth="2" />
+          <circle cx="32" cy="32" r="5" stroke="black" strokeWidth="2" />
+          <circle cx="32" cy="50" r="5" stroke="black" strokeWidth="2" />
+          <circle cx="52" cy="32" r="5" stroke="black" strokeWidth="2" />
+          <line x1="17" y1="20" x2="27" y2="16" stroke="black" strokeWidth="1.5" />
+          <line x1="17" y1="22" x2="27" y2="30" stroke="black" strokeWidth="1.5" />
+          <line x1="17" y1="22" x2="27" y2="48" stroke="black" strokeWidth="1.5" />
+          <line x1="17" y1="44" x2="27" y2="16" stroke="black" strokeWidth="1.5" />
+          <line x1="17" y1="44" x2="27" y2="32" stroke="black" strokeWidth="1.5" />
+          <line x1="17" y1="44" x2="27" y2="50" stroke="black" strokeWidth="1.5" />
+          <line x1="37" y1="14" x2="47" y2="30" stroke="black" strokeWidth="1.5" />
+          <line x1="37" y1="32" x2="47" y2="32" stroke="black" strokeWidth="1.5" />
+          <line x1="37" y1="50" x2="47" y2="34" stroke="black" strokeWidth="1.5" />
+        </svg>
+      </div>
+    );
+  }
+
+  const pad = 30;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  graph.nodes.forEach(n => {
+    if (n.position.x < minX) minX = n.position.x;
+    if (n.position.x > maxX) maxX = n.position.x;
+    if (n.position.y < minY) minY = n.position.y;
+    if (n.position.y > maxY) maxY = n.position.y;
+  });
+
+  const nodeW = 160;
+  const nodeH = 40;
+
+  minX -= pad;
+  minY -= pad;
+  maxX += nodeW + pad;
+  maxY += nodeH + pad;
+
+  const w = Math.max(maxX - minX, 300);
+  const h = Math.max(maxY - minY, 170);
+
   return (
-    <div className="relative flex aspect-[300/170] w-full items-center justify-center overflow-hidden rounded-3xl border border-black/5 bg-[#f0f2f5]">
-      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="opacity-[0.12]">
-        <circle cx="12" cy="20" r="5" stroke="black" strokeWidth="2" />
-        <circle cx="12" cy="44" r="5" stroke="black" strokeWidth="2" />
-        <circle cx="32" cy="14" r="5" stroke="black" strokeWidth="2" />
-        <circle cx="32" cy="32" r="5" stroke="black" strokeWidth="2" />
-        <circle cx="32" cy="50" r="5" stroke="black" strokeWidth="2" />
-        <circle cx="52" cy="32" r="5" stroke="black" strokeWidth="2" />
-        <line x1="17" y1="20" x2="27" y2="16" stroke="black" strokeWidth="1.5" />
-        <line x1="17" y1="22" x2="27" y2="30" stroke="black" strokeWidth="1.5" />
-        <line x1="17" y1="22" x2="27" y2="48" stroke="black" strokeWidth="1.5" />
-        <line x1="17" y1="44" x2="27" y2="16" stroke="black" strokeWidth="1.5" />
-        <line x1="17" y1="44" x2="27" y2="32" stroke="black" strokeWidth="1.5" />
-        <line x1="17" y1="44" x2="27" y2="50" stroke="black" strokeWidth="1.5" />
-        <line x1="37" y1="14" x2="47" y2="30" stroke="black" strokeWidth="1.5" />
-        <line x1="37" y1="32" x2="47" y2="32" stroke="black" strokeWidth="1.5" />
-        <line x1="37" y1="50" x2="47" y2="34" stroke="black" strokeWidth="1.5" />
+    <div className="relative flex aspect-[300/170] w-full items-center justify-center overflow-hidden rounded-3xl border border-black/5 bg-[#f8f9fb]">
+      <svg viewBox={`${minX} ${minY} ${w} ${h}`} className="w-full h-full opacity-[0.85]">
+        {graph.edges?.map(e => {
+          const src = graph.nodes.find(n => n.id === e.source);
+          const tgt = graph.nodes.find(n => n.id === e.target);
+          if (!src || !tgt) return null;
+          const x1 = src.position.x + nodeW;
+          const y1 = src.position.y + nodeH / 2;
+          const x2 = tgt.position.x;
+          const y2 = tgt.position.y + nodeH / 2;
+          return (
+            <path
+              key={e.id}
+              d={`M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="text-black/20"
+            />
+          );
+        })}
+        {graph.nodes.map(n => (
+          <g key={n.id} transform={`translate(${n.position.x}, ${n.position.y})`}>
+            <rect width={nodeW} height={nodeH} rx={12} fill="white" className="drop-shadow-sm" />
+            <rect width={nodeW} height={nodeH} rx={12} stroke="currentColor" strokeWidth="1.5" fill="none" className="text-black/10" />
+            <circle cx={18} cy={20} r={5} fill="currentColor" className="text-black/20" />
+            <rect x={34} y={18} width={nodeW - 50} height={4} rx={2} fill="currentColor" className="text-black/10" />
+          </g>
+        ))}
       </svg>
     </div>
   );
@@ -373,8 +430,8 @@ export function HomeDashboard({ user }: { user: User }) {
           FIXED TOP BAR — DO NOT MODIFY
       ════════════════════════════════════════ */}
       <div className="fixed top-0 left-60 right-0 z-50 flex h-14 items-center justify-start bg-gradient-to-b from-white via-white to-white/0 pr-6 pointer-events-none">
-        <span className="pointer-events-auto text-[20px] font-black tracking-tight text-gray-900 select-none">
-          july<span className="text-gray-400 font-black">ai</span>
+        <span className="pointer-events-auto text-[20px] font-black tracking-tight text-gray-400 select-none">
+          july<span className="text-[#0066FF] font-black">ai</span>
         </span>
       </div>
 
@@ -489,7 +546,7 @@ export function HomeDashboard({ user }: { user: User }) {
                       : playgrounds.map((pg) => (
                         <div key={pg.id} className="group flex flex-col gap-3">
                           <Link href={`/playground/${pg.id}`} className="relative flex aspect-[300/170] w-full items-center justify-center overflow-hidden rounded-3xl border border-black/5 transition-all hover:border-black/10">
-                            <WorkspaceThumbnail />
+                            <WorkspaceThumbnail graph={pg.graph_json} />
                           </Link>
                           <div className="flex flex-row items-start justify-between gap-2">
                             <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
