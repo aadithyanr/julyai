@@ -2,93 +2,72 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { GripVertical, Zap, Eye, KeyRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { GripVertical, Zap, Eye, Command, ArrowRight } from "lucide-react";
 
-function LightBg() {
+/* ── Minimalist Engineering Dot Grid ───────────────────────────────────── */
+function TechDotGrid() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <svg className="absolute inset-0 h-full w-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[var(--background)]" aria-hidden>
+      {/* Crisp, high-contrast, perfectly spaced IDE dot grid */}
+      <svg className="absolute inset-0 h-full w-full opacity-40" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <pattern id="dotgrid" width="28" height="28" patternUnits="userSpaceOnUse">
-            <circle cx="14" cy="14" r="1" fill="var(--accent)" />
+          <pattern id="dotgrid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <rect width="24" height="24" fill="none" />
+            <circle cx="12" cy="12" r="1" fill="var(--border-strong)" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#dotgrid)" />
       </svg>
-      <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full opacity-30 blur-[120px]" style={{ background: "radial-gradient(circle, #C7D2FE 0%, transparent 70%)" }} />
-      <div className="absolute top-1/3 -right-32 h-[400px] w-[400px] rounded-full opacity-25 blur-[120px]" style={{ background: "radial-gradient(circle, #BBF7D0 0%, transparent 70%)" }} />
-      <div className="absolute -bottom-32 left-1/3 h-[350px] w-[350px] rounded-full opacity-20 blur-[100px]" style={{ background: "radial-gradient(circle, #FECDD3 0%, transparent 70%)" }} />
     </div>
   );
 }
 
-function NeuralIllustration() {
-  const layers = [
-    { count: 3, color: "var(--block-input)" },
-    { count: 4, color: "var(--accent)" },
-    { count: 4, color: "var(--block-conv)" },
-    { count: 2, color: "var(--block-output)" },
-  ];
-  const layerSpacing = 56;
-  const nodeRadius = 6;
-  const startX = 30;
-  const totalWidth = startX * 2 + (layers.length - 1) * layerSpacing;
-  const maxNodes = Math.max(...layers.map((l) => l.count));
-  const totalHeight = maxNodes * 28 + 20;
-  const getY = (nodeIndex: number, total: number) => {
-    const spacing = 28;
-    const layerHeight = (total - 1) * spacing;
-    return (totalHeight - layerHeight) / 2 + nodeIndex * spacing;
-  };
+/* ── Schematic Code Block Illustration ────────────────────────────────── */
+function SchematicIllustration() {
   return (
-    <div className="flex justify-center mb-6">
-      <svg width={totalWidth} height={totalHeight} viewBox={`0 0 ${totalWidth} ${totalHeight}`} className="opacity-60">
-        {layers.map((layer, li) => {
-          if (li === 0) return null;
-          const prev = layers[li - 1];
-          return Array.from({ length: prev.count }).flatMap((_, pi) =>
-            Array.from({ length: layer.count }).map((_, ni) => (
-              <line key={`${li}-${pi}-${ni}`} x1={startX + (li - 1) * layerSpacing} y1={getY(pi, prev.count)} x2={startX + li * layerSpacing} y2={getY(ni, layer.count)} stroke="#D1D5DB" strokeWidth="1" opacity="0.6" />
-            ))
-          );
-        })}
-        {layers.map((layer, li) =>
-          Array.from({ length: layer.count }).map((_, ni) => (
-            <circle key={`node-${li}-${ni}`} cx={startX + li * layerSpacing} cy={getY(ni, layer.count)} r={nodeRadius} fill={layer.color} opacity="0.85" />
-          ))
-        )}
-      </svg>
-    </div>
-  );
-}
-
-function Logo() {
-  return (
-    <div className="flex items-center justify-center gap-3">
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white shadow-lg overflow-hidden border border-[var(--border-muted)]">
-        <img src="/logo.png" alt="JulyAI Logo" className="w-full h-full object-cover scale-110" />
+    <div className="flex justify-center mb-10 mt-2 select-none pointer-events-none">
+      <div className="flex items-center gap-3 opacity-80 font-mono text-xs">
+        <div className="flex flex-col items-end gap-2 text-[var(--foreground-muted)]">
+          <span>Input[Batch, 768]</span>
+          <span>Linear(768, 3072)</span>
+          <span>GeLU()</span>
+        </div>
+        <div className="flex flex-col gap-2 relative">
+          <div className="absolute left-[50%] -top-4 bottom-[-16px] w-[1px] bg-[var(--border-neutral)]"></div>
+          {/* Connection nodes */}
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] z-10 mx-auto"></div>
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] z-10 mx-auto"></div>
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] z-10 mx-auto"></div>
+        </div>
+        <div className="flex flex-col items-start gap-2 text-[var(--foreground-muted)]">
+          <span>{`{ status: "ok" }`}</span>
+          <span>{`{ grads: true }`}</span>
+          <span>{`{ act: 0.94 }`}</span>
+        </div>
       </div>
-      <h1 className="text-4xl font-bold tracking-tight text-[var(--foreground)]" style={{ fontFamily: "var(--font-outfit), var(--font-sans)" }}>
-        JulyAI
-      </h1>
     </div>
   );
 }
 
+/* ── Feature Pills ────────────────────────────────────────────────────── */
 function FeaturePills() {
   const features = [
-    { icon: GripVertical, label: "Drag & Drop", color: "#F59E0B" },
-    { icon: Zap, label: "Train in Real-time", color: "#6366F1" },
-    { icon: Eye, label: "Peek Inside Models", color: "#10B981" },
+    { icon: GripVertical, label: "Visual Graph" },
+    { icon: Zap, label: "Real-time Training" },
+    { icon: Eye, label: "Tensor Inspection" },
   ];
+
   return (
-    <div className="flex flex-wrap gap-2.5 justify-center mt-8">
+    <div className="flex flex-wrap gap-3 justify-center mt-8">
       {features.map((f) => {
         const Icon = f.icon;
         return (
-          <span key={f.label} className="inline-flex items-center gap-2 rounded-full bg-[var(--surface)] px-4 py-2 text-xs font-medium text-[var(--foreground-secondary)] shadow-sm border border-[var(--border)]">
-            <Icon className="h-4 w-4 shrink-0" style={{ color: f.color }} strokeWidth={2.25} />
+          <span
+            key={f.label}
+            className="inline-flex items-center gap-1.5 rounded-sm bg-[var(--background-subtle)] px-2.5 py-1 text-[11px] uppercase tracking-wider font-mono text-[var(--foreground-secondary)] border border-[var(--border)]"
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={1.5} />
             {f.label}
           </span>
         );
@@ -97,332 +76,177 @@ function FeaturePills() {
   );
 }
 
-function Spinner() {
-  return (
-    <svg className="h-5 w-5 animate-spin text-[var(--accent)]" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.15" />
-      <path d="M12 2a10 10 0 019.95 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
+/* ── Main Login Page ──────────────────────────────────────────────────── */
 export default function LoginPage() {
   const supabase = createClient();
   const router = useRouter();
-  /** True while user must set a new password (server recovery redirect or PASSWORD_RECOVERY). */
-  const recoveryPendingRef = useRef(false);
-
-  // Form state
   const [email, setEmail] = useState("user@july.ai");
   const [password, setPassword] = useState("password123");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  // UI mode state — only one can be true at a time
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [isResetMode, setIsResetMode] = useState(false);
-
-  // Feedback state
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get("error") === "invalid_reset_link") {
-      setError("This reset link is invalid or has expired. Please request a new one.");
-      setIsForgotPassword(true);
-    }
-
-    if (params.get("passwordUpdated") === "1") {
-      setMessage("Your password was updated. Sign in with your new password.");
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-
-    const recoveryParam = params.get("recovery");
-    if (recoveryParam === "1" || recoveryParam === "true") {
-      recoveryPendingRef.current = true;
-      setIsResetMode(true);
-      setIsForgotPassword(false);
-      setIsSignUp(false);
-      setError(null);
-      setMessage(null);
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        recoveryPendingRef.current = true;
-        setIsResetMode(true);
-        setIsForgotPassword(false);
-        setIsSignUp(false);
-        setError(null);
-        setMessage(null);
-        return;
-      }
-      if (session) {
-        if (recoveryPendingRef.current) {
-          setIsResetMode(true);
-          return;
-        }
-        router.replace("/");
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace("/");
     });
-
     return () => subscription.unsubscribe();
   }, [supabase.auth, router]);
 
-  // Handles: sign in, sign up, and forgot password email send
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setMessage(null);
     setLoading(true);
 
-    if (isForgotPassword) {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+    if (isSignUp) {
+      const { error: err } = await supabase.auth.signUp({
+        email,
+        password,
       });
       if (err) {
         setError(err.message);
+        setLoading(false);
       } else {
-        setMessage("Check your email for a password reset link.");
-      }
-      setLoading(false);
-      return;
-    }
-
-    if (isSignUp) {
-      const { error: err } = await supabase.auth.signUp({ email, password });
-      if (err) {
-        setError(err.message);
-      } else {
-        setMessage("Account created! You can now sign in.");
+        setMessage("Account created. You can now sign in.");
         setIsSignUp(false);
+        setLoading(false);
       }
     } else {
-      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: err } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (err) {
         setError(err.message);
+        setLoading(false);
       }
     }
-    setLoading(false);
-  };
-
-  // Handles: set new password after recovery
-  const handleSetNewPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setMessage(null);
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-    setLoading(true);
-    const { error: err } = await supabase.auth.updateUser({ password: newPassword });
-    setLoading(false);
-    if (err) {
-      setError(err.message);
-    } else {
-      recoveryPendingRef.current = false;
-      setIsResetMode(false);
-      setNewPassword("");
-      setConfirmPassword("");
-      await supabase.auth.signOut();
-      router.replace("/login?passwordUpdated=1");
-    }
-  };
-
-  const resetToSignIn = () => {
-    setIsForgotPassword(false);
-    setIsSignUp(false);
-    setError(null);
-    setMessage(null);
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-b from-[var(--background)] to-[var(--background-subtle)]">
-      <LightBg />
-      <div className="relative z-10 w-full max-w-[420px] animate-fade-in">
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 bg-[var(--background)] selection:bg-[rgba(0,128,255,0.2)] selection:text-[var(--foreground)]">
+      <TechDotGrid />
+
+      {/* Top right floating command icon for the "IDE" feel */}
+      <div className="absolute top-6 right-6 hidden sm:flex items-center gap-1.5 text-[11px] font-mono text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-1 rounded shadow-sm bg-[var(--surface)]">
+        <Command className="w-3.5 h-3.5" />
+        <span>K</span>
+        <span className="ml-1">to search</span>
+      </div>
+
+      <div className="relative z-10 w-full max-w-[360px] animate-fade-in">
+        {/* Brand */}
         <div className="flex justify-center mb-6">
-          <Logo />
+          <div className="flex items-center gap-2">
+             <div className="h-6 w-6 rounded bg-[var(--foreground)] text-[var(--surface)] flex items-center justify-center font-bold text-xs uppercase tracking-tighter">
+               J
+             </div>
+             <h1 className="text-xl font-medium tracking-tight text-[var(--foreground)]">
+               JulyAI
+             </h1>
+          </div>
         </div>
-        {!isResetMode && (
-          <>
-            <NeuralIllustration />
-            <p className="text-center text-[var(--foreground-muted)] text-[13px] mb-8">
-              The next generation of visual intelligence.
+
+        {/* Schematic illustration */}
+        <SchematicIllustration />
+
+        {/* Auth Card */}
+        <div className="rounded-lg border border-[var(--border-neutral)] bg-[var(--surface)] shadow-md p-6">
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold text-[var(--foreground)] mb-1 uppercase tracking-wider font-mono">
+              {isSignUp ? "INITIALIZE_ACCOUNT" : "AUTHENTICATE"}
+            </h2>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              {isSignUp ? "Create a new workspace profile." : "Enter your credentials to continue."}
             </p>
-          </>
-        )}
+          </div>
 
-        <div
-          className={`rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur-sm shadow-lg ${isResetMode ? "p-8 ring-1 ring-[var(--accent)]/15" : "p-8"}`}
-        >
-
-          {/* ── Card heading changes based on mode ── */}
-          {isResetMode ? (
-            <div className="mb-6 flex flex-col items-center text-center">
-              <div
-                className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--background-subtle)] shadow-sm"
-                aria-hidden
-              >
-                <KeyRound className="h-7 w-7 text-[var(--accent)]" strokeWidth={1.75} />
-              </div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-1">Create a new password</h2>
-              <p className="text-xs text-[var(--foreground-muted)] max-w-[280px] leading-relaxed">
-                Your email link was verified. Choose a strong password you haven&apos;t used elsewhere.
-              </p>
-            </div>
-          ) : isForgotPassword ? (
-            <>
-              <button type="button" onClick={resetToSignIn} className="mb-3 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] focus:outline-none">
-                ← Back
-              </button>
-              <h2 className="text-center text-lg font-semibold text-[var(--foreground)] mb-1">Reset your password</h2>
-              <p className="text-center text-xs text-[var(--foreground-muted)] mb-6">We&apos;ll send a reset link to your email</p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-center text-lg font-semibold text-[var(--foreground)] mb-1">Get Started</h2>
-              <p className="text-center text-xs text-[var(--foreground-muted)] mb-6">Sign in to save your playgrounds and track progress</p>
-            </>
-          )}
-
-          {/* ── Error / success messages ── */}
           {error && (
-            <div className="mb-5 rounded-xl bg-[var(--danger-muted)] border border-[var(--danger)]/30 px-4 py-3 text-sm text-[var(--danger)]" role="alert">
-              {error}
+            <div
+              className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600 font-mono"
+              role="alert"
+            >
+              Error: {error}
             </div>
           )}
           {message && (
-            <div className="mb-5 rounded-xl bg-green-500/10 border border-green-500/30 px-4 py-3 text-sm text-green-500" role="alert">
-              {message}
+            <div
+              className="mb-4 rounded border border-green-200 bg-green-50 px-3 py-2 text-[11px] text-green-600 font-mono"
+              role="alert"
+            >
+              Success: {message}
             </div>
           )}
 
-          {/* ── Set new password form (after clicking reset link) ── */}
-          {isResetMode ? (
-            <form onSubmit={handleSetNewPassword} className="flex flex-col gap-4">
-              <div className="space-y-1.5">
-                <label htmlFor="reset-new-password" className="block text-xs font-medium text-[var(--foreground-secondary)]">
-                  New password
-                </label>
-                <input
-                  id="reset-new-password"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="reset-confirm-password" className="block text-xs font-medium text-[var(--foreground-secondary)]">
-                  Confirm password
-                </label>
-                <input
-                  id="reset-confirm-password"
-                  type="password"
-                  placeholder="Re-enter new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] px-4 py-3.5 font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? <Spinner /> : null}
-                <span className="text-sm">Update password and continue</span>
-              </button>
-            </form>
-
-          ) : (
-            /* ── Sign in / Sign up / Forgot password form ── */
-            <form onSubmit={handleEmailAuth} className="flex flex-col gap-3">
+          <form onSubmit={handleEmailAuth} className="flex flex-col gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--foreground-secondary)] pl-1">
+                Workspace Email
+              </label>
               <input
                 type="email"
-                placeholder="Email address"
+                placeholder="eng@domain.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
+                className="w-full rounded border border-[var(--border-strong)] bg-[var(--background-subtle)] px-3 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:bg-[var(--surface)] placeholder:text-[var(--foreground-muted)]"
               />
-
-              {/* Password input — hidden on forgot password view */}
-              {!isForgotPassword && (
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background-subtle)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] placeholder:text-[var(--foreground-muted)]"
-                />
-              )}
-
-              {/* Forgot password link — only on sign in view */}
-              {!isSignUp && !isForgotPassword && (
-                <div className="-mt-1">
-                  <button
-                    type="button"
-                    onClick={() => { setIsForgotPassword(true); setError(null); setMessage(null); }}
-                    className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:underline focus:outline-none"
-                  >
-                    Forgot password?
-                  </button>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase tracking-wider text-[var(--foreground-secondary)] pl-1">
+                Access Token
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full rounded border border-[var(--border-strong)] bg-[var(--background-subtle)] px-3 py-2 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)] focus:bg-[var(--surface)] placeholder:text-[var(--foreground-muted)]"
+              />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-2 relative overflow-hidden flex items-center justify-between rounded bg-[var(--foreground)] text-[var(--surface)] border border-transparent px-4 py-2.5 font-medium transition-all hover:bg-[#33373a] active:scale-[0.99] disabled:opacity-90 disabled:cursor-wait font-mono text-xs w-full group"
+            >
+              {loading ? (
+                <div className="w-full flex items-center gap-2">
+                   {/* Using the global 'generating-text' animation logic */}
+                   <div className="generating-text text-[var(--surface)] opacity-90 mx-auto">
+                     {isSignUp ? "PROVISIONING..." : "COMPILING..."}
+                   </div>
                 </div>
+              ) : (
+                <>
+                  <span>{isSignUp ? "Create Workspace" : "Execute Login"}</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />
+                </>
               )}
+              {loading && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--accent)] animate-[generating-shimmer_1.5s_infinite]" />
+              )}
+            </button>
+          </form>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] px-4 py-3.5 font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? <Spinner /> : null}
-                <span className="text-sm">
-                  {isForgotPassword ? "Send reset link" : isSignUp ? "Create Account" : "Sign In"}
-                </span>
-              </button>
-            </form>
-          )}
-
-          {/* ── Sign in / Sign up toggle — hidden on forgot password and reset mode ── */}
-          {!isForgotPassword && !isResetMode && (
-            <p className="mt-6 text-center text-xs text-[var(--foreground-muted)] leading-relaxed">
-              {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-              <button
+          <div className="mt-6 border-t border-[var(--border)] pt-4">
+             <button
                 type="button"
-                onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null); }}
-                className="text-[var(--foreground)] hover:underline focus:outline-none font-medium"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-[11px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors w-full text-center font-mono"
               >
-                {isSignUp ? "Sign In" : "Sign Up"}
+                {isSignUp ? "← Back to Login" : "Initialize New Account →"}
               </button>
-            </p>
-          )}
+          </div>
         </div>
 
         <FeaturePills />
-        <p className="text-center text-[11px] text-[var(--foreground-muted)] mt-8 opacity-60">
-          Made with care for curious minds
-        </p>
+
       </div>
     </div>
   );

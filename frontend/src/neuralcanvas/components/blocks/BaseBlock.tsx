@@ -1,8 +1,7 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// BaseBlock — v3 Light Theme: white card, auto-height, colored accent bar,
-// unique visual content per block type, params shown as friendly pills
+// BaseBlock — Cursor format IDE parameter block
 // ---------------------------------------------------------------------------
 
 import {
@@ -196,35 +195,17 @@ function NumberParam({ value, min, max, step = 1, color, disabled, onChange }: N
         disabled={disabled}
         className={`
           nodrag nopan
-          w-[52px] px-1.5 py-0.5 rounded-md text-[12px] font-mono text-center
-          bg-[var(--surface-elevated)] border border-[var(--border)]
+          w-[48px] px-1 py-0.5 rounded-sm text-[10px] font-mono text-right
+          bg-[var(--surface)] border border-[var(--border)]
           text-[var(--foreground)]
-          outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-100
+          outline-none focus:border-[var(--accent-blue)]
           transition-colors duration-100
           [appearance:textfield]
           [&::-webkit-outer-spin-button]:appearance-none
           [&::-webkit-inner-spin-button]:appearance-none
-          ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+          ${disabled ? "opacity-50 cursor-not-allowed bg-[var(--background-subtle)]" : ""}
         `}
       />
-      {!disabled && (
-        <div className="flex flex-col -space-y-px">
-          <button
-            className="nodrag nopan p-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-            onClick={() => onChange(clamp(value + step))}
-            tabIndex={-1}
-          >
-            <ChevronUp size={10} />
-          </button>
-          <button
-            className="nodrag nopan p-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-            onClick={() => onChange(clamp(value - step))}
-            tabIndex={-1}
-          >
-            <ChevronDown size={10} />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -247,10 +228,10 @@ function SelectParam({ value, options, onChange }: SelectParamProps) {
       onChange={(e) => onChange(e.target.value)}
       className="
         nodrag nopan
-        w-[72px] px-1.5 py-0.5 rounded-md text-[12px] font-mono
-        bg-[var(--surface-elevated)] border border-[var(--border)]
+        w-[72px] px-1 py-0.5 rounded-sm text-[10px] font-mono
+        bg-[var(--surface)] border border-[var(--border)]
         text-[var(--foreground)]
-        outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-100
+        outline-none focus:border-[var(--accent-blue)]
         transition-colors duration-100 cursor-pointer
       "
     >
@@ -274,8 +255,6 @@ interface ParamRowProps {
 }
 
 function ParamRow({ schema, value, color, disabled, onUpdate }: ParamRowProps) {
-  const friendlyName = FRIENDLY_PARAM_NAMES[schema.name] ?? schema.name;
-
   const renderInput = () => {
     if (schema.type === "select" && schema.options) {
       return (
@@ -303,12 +282,12 @@ function ParamRow({ schema, value, color, disabled, onUpdate }: ParamRowProps) {
   };
 
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex items-center justify-between gap-2 px-3 py-1 hover:bg-[var(--background-subtle)]">
       <span
-        className={`text-[11px] font-medium truncate ${disabled ? "text-[var(--foreground-muted)] opacity-50" : "text-[var(--foreground-muted)]"}`}
-        title={disabled ? `${friendlyName} — auto-set from input shape` : `${friendlyName} (${schema.name})`}
+        className={`text-[10px] font-mono truncate ${disabled ? "text-[var(--foreground-muted)] opacity-50" : "text-[var(--foreground-secondary)]"}`}
+        title={disabled ? `${schema.name} — auto-set` : schema.name}
       >
-        {friendlyName}{disabled ? " (auto)" : ""}
+        {schema.name}
       </span>
       {renderInput()}
     </div>
@@ -324,14 +303,12 @@ export interface BaseBlockProps {
   blockType: BlockType;
   params: Record<string, number | string>;
   selected: boolean;
-  /** Node data (e.g. for animateFromPalette entrance animation) */
   data?: Record<string, unknown>;
-  /** Unique visual content (SVG illustration) injected by each block type */
   children?: ReactNode;
 }
 
 // ---------------------------------------------------------------------------
-// BaseBlock component — v3 white card design
+// BaseBlock component — IDE Parameter Card Design
 // ---------------------------------------------------------------------------
 
 function BaseBlockComponent({
@@ -347,7 +324,6 @@ function BaseBlockComponent({
   const result = shapes.get(id);
   const { setNodes } = useReactFlow();
   const [errorTooltip, setErrorTooltip] = useState(false);
-  const [showShape, setShowShape] = useState(false);
   const { open: openPeep } = usePeepInsideContext();
 
   const handlePeepInside = useCallback(
@@ -369,13 +345,12 @@ function BaseBlockComponent({
     [id, blockType, params, openPeep],
   );
 
-  const color = def?.color ?? "#6366F1";
+  const color = def?.color ?? "var(--foreground-muted)";
   const Icon = def ? ICON_MAP[def.icon] : null;
   const hasError = !!result?.error;
   const inLabel = getShapeLabel(result?.inputShape ?? null);
   const outLabel = getShapeLabel(result?.outputShape ?? null);
 
-  // Determine which params are auto-inferred from input shape (should be read-only)
   const inferredParamNames = useMemo(() => {
     const inputShape = result?.inputShape ?? null;
     if (!inputShape?.length) return new Set<string>();
@@ -404,75 +379,71 @@ function BaseBlockComponent({
 
   if (!def) {
     return (
-      <div className="px-4 py-3 rounded-xl bg-[var(--danger-muted)] border border-[var(--danger)] text-[var(--danger)] text-sm">
+      <div className="px-2 py-1 rounded bg-red-50 border border-red-200 text-[10px] font-mono text-red-600">
         Unknown block: {blockType}
       </div>
     );
   }
 
   const animateFromPalette = !!(data as { animateFromPalette?: boolean } | undefined)?.animateFromPalette;
+  const blockWidth = def.width ? Math.max(def.width - 20, 200) : 200;
+
   const blockContent = (
     <div
       className={`
-        group/block relative flex flex-col
-        bg-[var(--block-surface)] rounded-2xl
-        border transition-all duration-300
-        ${selected ? "ring-2 shadow-2xl scale-[1.02]" : "shadow-md hover:shadow-xl"}
-        ${hasError ? "border-[var(--danger)] ring-[var(--danger)]/30" : selected ? "border-[var(--accent)] ring-[var(--accent)]/30" : "border-[var(--border)] hover:border-[var(--border-strong)]"}
+        group/block relative flex flex-col bg-white
+        rounded-2xl border
+        ${selected ? "border-gray-400 shadow-[0_8px_24px_0_rgba(0,0,0,0.12)]" : "border-gray-100 shadow-[0_4px_16px_0_rgba(0,0,0,0.06)] hover:border-gray-200"}
+        ${hasError ? "!border-red-400 !shadow-[0_4px_16px_0_rgba(239,68,68,0.2)]" : ""}
+        transition-all duration-200
       `}
-      style={{ width: def.width ?? BLOCK_BASE_WIDTH }}
+      style={{ width: blockWidth }}
     >
-      {/* ── Colored left accent bar ── */}
+      {/* ── IDE Syntax Color Bar (Top) ── */}
       <div
-        className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full"
-        style={{ backgroundColor: color }}
+        className="absolute left-0 top-0 right-0 h-[3px] z-10 rounded-t-2xl"
+        style={{ backgroundColor: hasError ? "#ef4444" : color }}
       />
 
       {/* ═══ Header ═══ */}
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+      <div className="flex items-center gap-2 px-3.5 pt-3 pb-2 border-b border-gray-50 bg-[#fafafa] rounded-t-2xl">
         {Icon && (
-          <div
-            className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
-            style={{ backgroundColor: `${color}12` }}
-          >
-            <Icon size={14} style={{ color }} />
+          <div className="flex flex-col items-center justify-center shrink-0">
+            <Icon size={12} className="text-gray-400" />
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <span className="text-[13px] font-bold text-[var(--foreground)] truncate block leading-tight tracking-tight">
+        <div className="flex-1 min-w-0 flex items-baseline gap-1.5 overflow-hidden">
+          <span className="text-[13px] font-bold text-gray-800 tracking-tight truncate shrink-0 max-w-[70%]">
             {def.label}
           </span>
-          <span className="text-[9px] font-extrabold uppercase tracking-[0.1em] block leading-tight mt-0.5 opacity-80" style={{ color }}>
+          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 truncate mt-0.5">
             {def.category}
           </span>
         </div>
-        {/* Peep inside button — visible on hover */}
         <button
           className="
             nodrag nopan
             flex items-center justify-center w-6 h-6 rounded-lg shrink-0
-            text-[var(--foreground-muted)] hover:text-[var(--accent)]
-            bg-transparent hover:bg-[var(--accent-muted)]
+            text-gray-400 hover:text-gray-800 hover:bg-gray-100
             transition-all duration-150
             opacity-0 group-hover/block:opacity-100
           "
-          title="Peep inside this block"
+          title="Inspect tensor operations"
           onClick={handlePeepInside}
         >
-          <Eye size={13} />
+          <Eye size={12} />
         </button>
       </div>
 
-      {/* ═══ Visual content area (unique per block type) ═══ */}
       {children && (
-        <div className="px-4 pb-2">
+        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--surface)]">
           {children}
         </div>
       )}
 
       {/* ═══ Parameters ═══ */}
       {def.paramSchema.length > 0 && (
-        <div className="px-4 py-2 space-y-1.5 border-t border-[var(--border)]">
+        <div className="py-1 flex flex-col">
           {def.paramSchema.map((schema) => (
             <ParamRow
               key={schema.name}
@@ -486,48 +457,33 @@ function BaseBlockComponent({
         </div>
       )}
 
-      {/* ═══ Shape bar — shown on hover ═══ */}
+      {/* ═══ Shape bar / Status ═══ */}
       <div
         className={`
-          px-4 py-1.5 text-[11px] font-mono border-t transition-all duration-200
-          ${hasError ? "border-[var(--danger)] bg-[var(--danger-muted)]" : "border-[var(--border)] bg-[var(--surface-elevated)]"}
-          ${!hasError && !showShape ? "opacity-60 group-hover/block:opacity-100" : ""}
-          rounded-b-2xl
+          flex items-center px-3.5 py-2 text-[10px] font-semibold border-t transition-colors rounded-b-2xl
+          ${hasError ? "border-red-100 bg-red-50/50" : "border-gray-50 bg-[#fafafa] group-hover/block:bg-gray-50/80"}
         `}
-        onMouseEnter={() => setShowShape(true)}
-        onMouseLeave={() => setShowShape(false)}
       >
         {hasError ? (
-          <div className="flex items-center gap-1.5">
-            <div className="relative">
-              <button
-                className="nodrag nopan text-[var(--danger)] hover:opacity-80 transition-colors"
-                onClick={() => setErrorTooltip((v) => !v)}
-              >
-                <AlertCircle size={12} />
-              </button>
-              {errorTooltip && (
-                <div className="absolute bottom-full left-0 mb-2 z-50 w-64 p-3 rounded-xl bg-[var(--surface)] border border-[var(--danger)] text-[12px] text-[var(--danger)] leading-relaxed shadow-lg">
-                  {result?.error}
-                </div>
-              )}
-            </div>
-            <span className="text-[var(--danger)] truncate flex-1">{result?.error}</span>
+          <div className="flex items-center gap-1.5 text-red-500 w-full font-medium">
+            <AlertCircle size={12} className="shrink-0" />
+            <span className="truncate flex-1" title={result?.error}>{result?.error}</span>
           </div>
         ) : (
-          <div
-            className="flex items-center gap-1.5"
-            title={getShapeLabelTooltip(result?.inputShape ?? null) || getShapeLabelTooltip(result?.outputShape ?? null) || undefined}
-          >
-            <span className="text-[var(--foreground-muted)]">{inLabel}</span>
-            <span className="text-[var(--foreground-muted)]">→</span>
-            <span className="font-medium" style={{ color }}>{outLabel}</span>
+          <div className="flex items-center justify-between w-full opacity-60 group-hover/block:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1.5 truncate" title={getShapeLabelTooltip(result?.inputShape ?? null) || undefined}>
+               <span className="text-gray-400 opacity-80">IN</span>
+               <span className="text-gray-600 font-medium">{inLabel || "-"}</span>
+            </div>
+            <div className="flex items-center gap-1.5 truncate justify-end" title={getShapeLabelTooltip(result?.outputShape ?? null) || undefined}>
+               <span className="text-gray-400 opacity-80">OUT</span>
+               <span className="text-gray-600 font-medium">{outLabel || "-"}</span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* ═══ Handles ═══ */}
-      {/* ── Handles ── */}
+      {/* ── Handles (Crisp dots) ── */}
       {def.inputPorts.map((port, i) => {
         const topPct = def.inputPorts.length === 1
           ? 50
@@ -541,9 +497,10 @@ function BaseBlockComponent({
             className="!transition-all !duration-300 !w-[10px] !h-[10px] hover:!scale-[1.4] !opacity-100"
             style={{
               top: `${topPct}%`,
-              background: hasError ? "var(--danger)" : "var(--block-surface)",
-              border: `2px solid ${hasError ? "var(--danger)" : color}`,
-              boxShadow: `0 0 0 3px var(--block-surface), 0 2px 4px rgba(0,0,0,0.05)`,
+              left: "-5px",
+              background: hasError ? "#ef4444" : "white",
+              border: `2px solid ${hasError ? "#ef4444" : color}`,
+              boxShadow: `0 0 0 3px white, 0 2px 4px rgba(0,0,0,0.05)`,
             }}
           />
         );
@@ -561,9 +518,10 @@ function BaseBlockComponent({
             className="!transition-all !duration-300 !w-[10px] !h-[10px] hover:!scale-[1.4] !opacity-100"
             style={{
               top: `${topPct}%`,
-              background: hasError ? "var(--danger)" : color,
-              border: `2px solid var(--block-surface)`,
-              boxShadow: `0 0 0 3px var(--block-surface), 0 2px 4px rgba(0,0,0,0.05)`,
+              right: "-5px",
+              background: hasError ? "#ef4444" : color,
+              border: `2px solid white`,
+              boxShadow: `0 0 0 3px white, 0 2px 4px rgba(0,0,0,0.05)`,
             }}
           />
         );
@@ -571,18 +529,12 @@ function BaseBlockComponent({
     </div>
   );
 
-  // Opacity + scale animation: avoids translateX/translateY which would shift handles
-  // during animation and break React Flow's cached handle positions (connections
-  // would stop short of the visible handle circles). Scale provides a polished pop-in.
   if (animateFromPalette) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.88 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{
-          duration: 0.55,
-          ease: [0.25, 0.46, 0.45, 0.94],
-        }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         style={{ width: "100%", transformOrigin: "center center" }}
       >
         {blockContent}

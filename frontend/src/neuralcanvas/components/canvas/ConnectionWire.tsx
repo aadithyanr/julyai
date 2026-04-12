@@ -34,33 +34,30 @@ const CONNECTOR_DOT_PERIOD = CONNECTOR_DOT_DASH + CONNECTOR_DOT_GAP; // 28 — k
 // Colors for the three states — light theme
 // ---------------------------------------------------------------------------
 
-// Colors now use CSS variables for theme awareness.
-// Since these are used inline in SVGs, we read computed values at render time
-// via a helper, but for the most part we reference CSS vars directly in JSX.
 const COLORS = {
   valid: {
-    stroke: "var(--connector-stroke)",
+    stroke: "#d1d5db", // gray-300
     dotStroke: "var(--accent)",
-    bg: "var(--surface)",
-    border: "var(--border)",
-    text: "var(--foreground)",
-    dot: "var(--success)",
+    bg: "#ffffff",
+    border: "#e5e7eb",
+    text: "#111827",
+    dot: "#10b981", // Emerald-500
   },
   error: {
-    stroke: "var(--danger)",
-    dotStroke: "var(--danger)",
-    bg: "var(--danger-muted)",
-    border: "var(--danger)",
-    text: "var(--danger)",
-    dot: "var(--danger)",
+    stroke: "#fca5a5",
+    dotStroke: "#ef4444",
+    bg: "#fef2f2",
+    border: "#fca5a5",
+    text: "#dc2626",
+    dot: "#ef4444",
   },
   unknown: {
-    stroke: "var(--connector-stroke)",
-    dotStroke: "var(--foreground-muted)",
-    bg: "var(--surface-elevated)",
-    border: "var(--border)",
-    text: "var(--foreground-muted)",
-    dot: "var(--foreground-muted)",
+    stroke: "#e5e7eb",
+    dotStroke: "#9ca3af",
+    bg: "#f9fafb",
+    border: "#e5e7eb",
+    text: "#6b7280",
+    dot: "#9ca3af",
   },
 } as const;
 
@@ -196,7 +193,7 @@ function ConnectionWireComponent({
         style={{
           ...style,
           stroke: colors.stroke,
-          strokeWidth: selected || hovered ? 2.5 : 1.5,
+          strokeWidth: selected || hovered ? 3 : 2,
           strokeLinecap: "round",
           transition: "stroke 0.2s ease, stroke-width 0.2s ease",
           ...(animateIn && {
@@ -212,7 +209,7 @@ function ConnectionWireComponent({
           d={edgePath}
           fill="none"
           stroke={accentColor}
-          strokeWidth={4}
+          strokeWidth={5}
           strokeDasharray={`${CONNECTOR_DOT_DASH} ${CONNECTOR_DOT_GAP}`}
           strokeLinecap="round"
           opacity={0.72}

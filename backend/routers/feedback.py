@@ -454,10 +454,20 @@ Current design (full JSON graph):
             # Use validated graph (with layout) when validation succeeds; otherwise normalized.
             suggested_graph = validated if validated is not None else normalized
 
-        # When the model returned JSON, never show raw JSON — strip the code block and show short message.
+        # When the model returned JSON, never show raw JSON — strip it and show a short message.
         display_text = text
-        if suggested and "```" in text:
-            display_text = re.sub(r"\s*```(?:json)?\s*[\s\S]*?```\s*", "\n\n", text).strip()
+        if suggested:
+            if "```" in text:
+                display_text = re.sub(r"\s*```(?:json)?\s*[\s\S]*?```\s*", "\n\n", text).strip()
+            else:
+                # Fallback: remove raw JSON block starting from first '{'
+                start_idx = text.find("{")
+                if start_idx >= 0:
+                    display_text = text[:start_idx].strip()
+                    
+            if not display_text:
+                display_text = "Here is the requested architecture."
+                
             display_text += "\n\nI've added the suggested architecture below your design. You can move or edit the new blocks."
 
         return display_text, suggested_graph
